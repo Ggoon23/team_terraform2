@@ -168,7 +168,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "config.amazonaws.com"
         }
         Action   = "s3:PutObject"
-        Resource = "Resource = "arn:aws:s3:::${var.s3_bucket_name}/aws-config/*"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}/${var.config_s3_prefix}/*"
         Condition = {
           StringEquals = {
             "s3:x-amz-acl" = "bucket-owner-full-control"
