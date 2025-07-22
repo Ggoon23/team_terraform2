@@ -127,7 +127,12 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "cloudtrail.amazonaws.com"
         }
         Action   = "s3:GetBucketAcl"
-        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
+          }
+        }
       },
       {
         Sid    = "AWSCloudTrailWrite"
@@ -136,10 +141,11 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "cloudtrail.amazonaws.com"
         }
         Action   = "s3:PutObject"
-        Resource = "arn:aws:s3:::${var.s3_bucket_name}/${var.cloudtrail_s3_prefix}/*"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
         Condition = {
           StringEquals = {
             "s3:x-amz-acl" = "bucket-owner-full-control"
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
           }
         }
       },
@@ -207,6 +213,15 @@ resource "aws_kms_key_policy" "cloudtrail_kms" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
       {
         Sid    = "AllowCloudTrailEncrypt"
         Effect = "Allow"
@@ -365,16 +380,16 @@ resource "aws_securityhub_account" "main" {
 }
 
 # Security Hub 표준 구독
-resource "aws_securityhub_standards_subscription" "aws_foundational" {
-  count         = var.enable_security_hub && var.security_hub_enable_aws_foundational ? 1 : 0
-  standards_arn = "arn:aws:securityhub:::standard/aws-foundational-security-best-practices/v/1.0.0"
-  depends_on = [aws_securityhub_account.main]
+resource "aws_securityhub_standards_subscription" "cis" {
+  count         = var.enable_security_hub ? 1 : 0
+  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}::standard/cis-aws-foundations-benchmark/v/1.2.0"
+  depends_on    = [aws_securityhub_account.main]
 }
 
-resource "aws_securityhub_standards_subscription" "cis" {
-  count         = var.enable_security_hub && var.security_hub_enable_cis ? 1 : 0
-  standards_arn = "arn:aws:securityhub:::standard/cis-aws-foundations-benchmark/v/1.2.0"
-  depends_on = [aws_securityhub_account.main]
+resource "aws_securityhub_standards_subscription" "aws_foundational" {
+  count         = var.enable_security_hub ? 1 : 0
+  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}::standard/aws-foundational-security-best-practices/v/1.0.0"
+  depends_on    = [aws_securityhub_account.main]
 }
 
 resource "aws_securityhub_standards_subscription" "pci_dss" {
