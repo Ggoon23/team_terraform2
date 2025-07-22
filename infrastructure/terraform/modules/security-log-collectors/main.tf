@@ -44,7 +44,7 @@ resource "aws_cloudtrail" "main" {
     }
   }
   # CloudWatch Logs 통합
-  cloud_watch_logs_group_arn = var.cloudtrail_cloudwatch_logs_enabled ? aws_cloudwatch_log_group.cloudtrail[0].arn : null
+  cloud_watch_logs_group_arn = var.cloudtrail_cloudwatch_logs_enabled ? "${aws_cloudwatch_log_group.cloudtrail[0].arn}:*" : null
   cloud_watch_logs_role_arn  = var.cloudtrail_cloudwatch_logs_enabled ? aws_iam_role.cloudtrail_cloudwatch[0].arn : null
 
   tags = merge(var.common_tags, {
@@ -179,9 +179,14 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
   })
 }
 
-# GuardDuty 설정
+# 기존 GuardDuty Detector 조회
+data "aws_guardduty_detector" "existing" {
+  count = var.enable_guardduty ? 1 : 0
+}
+
+# 기존 리소스가 있으면 사용, 없으면 생성
 resource "aws_guardduty_detector" "main" {
-  count  = var.enable_guardduty ? 1 : 0
+  count  = var.enable_guardduty && length(data.aws_guardduty_detector.existing) == 0 ? 1 : 0
   enable = true
 
   # S3 보호
@@ -365,7 +370,7 @@ resource "aws_iam_role" "config" {
 resource "aws_iam_role_policy_attachment" "config" {
   count      = var.enable_aws_config ? 1 : 0
   role       = aws_iam_role.config[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigServiceRolePolicy"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/ConfigRole"
 }
 
 resource "aws_iam_role_policy" "config_s3" {
@@ -406,7 +411,6 @@ resource "aws_inspector2_enabler" "main" {
 # VPC Flow Logs 설정
 resource "aws_flow_log" "main" {
   count           = var.enable_vpc_flow_logs ? 1 : 0
-  iam_role_arn    = aws_iam_role.flow_log[0].arn
   log_destination = var.vpc_flow_logs_destination_type == "s3" ? "arn:aws:s3:::${var.s3_bucket_name}/${var.vpc_flow_logs_s3_prefix}" : aws_cloudwatch_log_group.vpc_flow_logs[0].arn
   traffic_type    = var.vpc_flow_logs_traffic_type
   vpc_id          = var.vpc_id

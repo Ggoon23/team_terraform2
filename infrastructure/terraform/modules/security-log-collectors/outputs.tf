@@ -30,17 +30,17 @@ output "cloudtrail_log_group_name" {
 # GuardDuty 정보
 output "guardduty_detector_id" {
   description = "GuardDuty 탐지기 ID"
-  value       = var.enable_guardduty ? aws_guardduty_detector.main[0].id : null
+  value       = var.enable_guardduty && length(aws_guardduty_detector.main) > 0 ? aws_guardduty_detector.main[0].id : null
 }
 
 output "guardduty_detector_arn" {
   description = "GuardDuty 탐지기 ARN"
-  value       = var.enable_guardduty ? aws_guardduty_detector.main[0].arn : null
+  value       = var.enable_guardduty && length(aws_guardduty_detector.main) > 0 ? aws_guardduty_detector.main[0].arn : null
 }
 
 output "guardduty_account_id" {
   description = "GuardDuty 계정 ID"
-  value       = var.enable_guardduty ? aws_guardduty_detector.main[0].account_id : null
+  value       = var.enable_guardduty && length(aws_guardduty_detector.main) > 0 ? aws_guardduty_detector.main[0].account_id : null
 }
 
 output "guardduty_findings_bucket_name" {

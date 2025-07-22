@@ -103,17 +103,6 @@ resource "aws_security_group_rule" "lambda_to_rds" {
   description              = "Lambda to RDS access"
 }
 
-# Lambda에서 인터넷으로의 HTTPS 접근 (AWS API 호출용)
-resource "aws_security_group_rule" "lambda_https_egress" {
-  type              = "egress"
-  from_port         = 443
-  to_port           = 443
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = module.lambda_log_processor.security_group_id
-  description       = "Lambda HTTPS outbound for AWS API calls"
-}
-
 # =========================================
 # Application Load Balancer 보안 그룹
 # =========================================

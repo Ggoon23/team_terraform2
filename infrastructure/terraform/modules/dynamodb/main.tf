@@ -327,5 +327,5 @@ resource "aws_dynamodb_tag" "data_classification" {
 resource "aws_dynamodb_tag" "compliance" {
   resource_arn = aws_dynamodb_table.main.arn
   key          = "Compliance"
-  value        = join(",", var.compliance_requirements)
+  value        = "ISMS-P"
 }
