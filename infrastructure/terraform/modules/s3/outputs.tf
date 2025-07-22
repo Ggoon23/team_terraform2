@@ -226,7 +226,7 @@ output "website_configuration" {
     enabled        = true
     index_document = var.index_document
     error_document = var.error_document
-    website_endpoint = aws_s3_bucket.logs.website_endpoint
+    website_endpoint = var.enable_website_hosting ? aws_s3_bucket_website_configuration.logs[0].website_endpoint : null
   } : {
     enabled = false
   }

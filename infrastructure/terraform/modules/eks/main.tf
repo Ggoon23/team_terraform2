@@ -395,7 +395,8 @@ resource "aws_eks_addon" "vpc_cni" {
   cluster_name             = aws_eks_cluster.main.name
   addon_name               = "vpc-cni"
   addon_version            = var.vpc_cni_addon_version
-  resolve_conflicts        = "OVERWRITE"
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
   service_account_role_arn = aws_iam_role.vpc_cni[0].arn
 
   tags = var.common_tags

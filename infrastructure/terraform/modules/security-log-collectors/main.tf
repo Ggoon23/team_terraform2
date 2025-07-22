@@ -150,7 +150,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "config.amazonaws.com"
         }
         Action   = "s3:GetBucketAcl"
-        Resource = "arn:aws:s3:::${module.s3.logs_bucket_id}"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
       },
       {
         Sid    = "AWSConfigBucketExistenceCheck"
@@ -159,7 +159,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "config.amazonaws.com"
         }
         Action   = "s3:ListBucket"
-        Resource = "arn:aws:s3:::${module.s3.logs_bucket_id}"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
       },
       {
         Sid    = "AWSConfigBucketDelivery"
@@ -168,7 +168,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "config.amazonaws.com"
         }
         Action   = "s3:PutObject"
-        Resource = "arn:aws:s3:::${module.s3.logs_bucket_id}/aws-config/*"
+        Resource = "Resource = "arn:aws:s3:::${var.s3_bucket_name}/aws-config/*"
         Condition = {
           StringEquals = {
             "s3:x-amz-acl" = "bucket-owner-full-control"
