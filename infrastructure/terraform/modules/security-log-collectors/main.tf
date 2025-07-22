@@ -33,14 +33,6 @@ resource "aws_cloudtrail" "main" {
           values = [data_resource.value]
         }
       }
-
-      dynamic "data_resource" {
-        for_each = var.cloudtrail_lambda_data_events
-        content {
-          type   = "AWS::Lambda::Function"
-          values = [data_resource.value]
-        }
-      }
     }
   }
   # CloudWatch Logs 통합
@@ -207,7 +199,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
 
 # CloudTrail용 KMS 키 정책
 resource "aws_kms_key_policy" "cloudtrail_kms" {
-  count  = var.kms_key_arn != null ? 1 : 0
+  count  = var.enable_cloudtrail ? 1 : 0
   key_id = var.kms_key_arn
   
   policy = jsonencode({

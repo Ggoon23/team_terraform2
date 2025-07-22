@@ -290,12 +290,6 @@ variable "enable_event_notifications" {
   default     = true
 }
 
-variable "lambda_function_arn" {
-  description = "이벤트 처리용 Lambda 함수 ARN"
-  type        = string
-  default     = null
-}
-
 variable "sqs_queue_arn" {
   description = "이벤트 처리용 SQS 큐 ARN"
   type        = string

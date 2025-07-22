@@ -325,7 +325,7 @@ variable "create_access_role" {
 variable "access_role_principals" {
   description = "IAM 역할을 가정할 수 있는 서비스 목록"
   type        = list(string)
-  default     = ["lambda.amazonaws.com", "ecs-tasks.amazonaws.com"]
+  default     = ["ecs-tasks.amazonaws.com"]
 }
 
 variable "access_role_permissions" {

@@ -284,27 +284,6 @@ variable "allowed_ssh_cidrs" {
 }
 
 # =========================================
-# Lambda 함수 설정
-# =========================================
-variable "lambda_runtime" {
-  description = "Lambda 함수 런타임"
-  type        = string
-  default     = "python3.10"
-}
-
-variable "lambda_timeout" {
-  description = "Lambda 함수 타임아웃 (초)"
-  type        = number
-  default     = 300
-}
-
-variable "lambda_memory_size" {
-  description = "Lambda 함수 메모리 크기 (MB)"
-  type        = number
-  default     = 512
-}
-
-# =========================================
 # S3 버킷 설정
 # =========================================
 variable "s3_bucket_prefix" {

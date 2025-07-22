@@ -18,12 +18,6 @@ terraform import module.eks.aws_cloudwatch_log_group.eks "/aws/eks/dev-app-dev-e
 terraform import module.eks.aws_iam_role.cluster "dev-app-dev-eks-eks-cluster-role"
 terraform import module.eks.aws_iam_role.node_group "dev-app-dev-eks-eks-node-group-role"
 
-echo Lambda 리소스 임포트...
-terraform import module.lambda_log_processor.aws_iam_role.lambda "log-processor-execution-role"
-terraform import module.lambda_security_alert.aws_iam_role.lambda "security-alert-execution-role"
-terraform import module.lambda_log_processor.aws_cloudwatch_log_group.lambda "/aws/lambda/log-processor"
-terraform import module.lambda_security_alert.aws_cloudwatch_log_group.lambda "/aws/lambda/security-alert"
-
 echo RDS 리소스 임포트...
 terraform import module.rds.aws_db_subnet_group.main "dev-app-db-subnet-group"
 terraform import module.rds.aws_db_parameter_group.main "dev-app-db-parameter-group"

@@ -146,20 +146,6 @@ output "application_environment_variables" {
 }
 
 # =========================================
-# Lambda 함수 정보
-# =========================================
-output "lambda_functions_info" {
-  value = {
-    function_names         = [module.lambda_log_processor.function_name, module.lambda_security_alert.function_name]
-    function_arns          = [module.lambda_log_processor.function_arn, module.lambda_security_alert.function_arn]
-    function_invoke_arns   = [module.lambda_log_processor.invoke_arn, module.lambda_security_alert.invoke_arn]
-    function_versions      = [module.lambda_log_processor.function_version, module.lambda_security_alert.function_version]
-    security_group_id      = module.lambda_log_processor.security_group_id
-    execution_role_arn     = module.lambda_log_processor.execution_role_arn
-  }
-}
-
-# =========================================
 # 보안 로그 수집기 정보
 # =========================================
 output "security_log_collectors_info" {
@@ -283,14 +269,10 @@ output "troubleshooting_info" {
     security_group_ids = {
       eks_cluster = module.eks.cluster_security_group_id
       rds         = module.rds.security_group_id
-      lambda_log  = module.lambda_log_processor.security_group_id
-      lambda_alert = module.lambda_security_alert.security_group_id
       bastion     = aws_security_group.bastion.id
     }
     iam_roles = {
       eks_app_role = aws_iam_role.eks_app_role.arn
-      lambda_log_role  = module.lambda_log_processor.execution_role_arn
-      lambda_alert_role = module.lambda_security_alert.execution_role_arn
     }
     log_groups = {
       application = aws_cloudwatch_log_group.application_logs.name

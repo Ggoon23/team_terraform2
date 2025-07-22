@@ -65,17 +65,6 @@ resource "aws_security_group_rule" "rds_from_eks" {
   description              = "Allow EKS access to RDS"
 }
 
-# Lambda에서 RDS로의 접근 허용
-resource "aws_security_group_rule" "rds_from_lambda" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = module.lambda_log_processor.security_group_id
-  security_group_id        = module.rds.security_group_id
-  description              = "Allow Lambda access to RDS"
-}
-
 # Bastion에서 RDS로의 접근 허용 (관리 목적)
 resource "aws_security_group_rule" "rds_from_bastion" {
   count                    = var.enable_bastion_host ? 1 : 0
@@ -88,20 +77,6 @@ resource "aws_security_group_rule" "rds_from_bastion" {
   description              = "Allow Bastion access to RDS for management"
 }
 
-# =========================================
-# Lambda 보안 그룹 규칙
-# =========================================
-
-# Lambda에서 RDS로의 접근
-resource "aws_security_group_rule" "lambda_to_rds" {
-  type                     = "egress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = module.rds.security_group_id
-  security_group_id        = module.lambda_log_processor.security_group_id
-  description              = "Lambda to RDS access"
-}
 
 # =========================================
 # Application Load Balancer 보안 그룹
@@ -324,7 +299,6 @@ locals {
       rules = [
         "EKS clusters use private endpoints",
         "RDS instances are in private subnets only",
-        "Lambda functions run in VPC for data access",
         "All communications use TLS/SSL encryption"
       ]
     }

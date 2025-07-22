@@ -272,7 +272,6 @@ output "event_notification_config" {
   description = "S3 이벤트 알림 설정"
   value = {
     eventbridge_enabled   = var.enable_cloudwatch_events
-    lambda_function_arn   = var.lambda_function_arn
     sqs_queue_arn        = var.sqs_queue_arn
   }
 }

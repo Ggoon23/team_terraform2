@@ -48,12 +48,6 @@ variable "cloudtrail_s3_data_events" {
   default     = ["arn:aws:s3:::*/*"]
 }
 
-variable "cloudtrail_lambda_data_events" {
-  description = "모니터링할 Lambda 함수 ARN 목록"
-  type        = list(string)
-  default     = ["arn:aws:lambda:*:*:function:*"]
-}
-
 variable "cloudtrail_exclude_management_events" {
   description = "제외할 관리 이벤트 소스 목록"
   type        = list(string)
@@ -337,12 +331,6 @@ variable "enable_global_service_events" {
 # 데이터 이벤트 세부 설정
 variable "s3_bucket_arns_for_logging" {
   description = "로깅할 특정 S3 버킷 ARN 목록"
-  type        = list(string)
-  default     = []
-}
-
-variable "lambda_function_arns_for_logging" {
-  description = "로깅할 특정 Lambda 함수 ARN 목록"
   type        = list(string)
   default     = []
 }

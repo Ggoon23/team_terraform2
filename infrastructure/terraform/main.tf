@@ -196,15 +196,9 @@ module "rds" {
   # 네트워크 설정
   vpc_id                = module.vpc.vpc_id
   database_subnet_ids   = module.vpc.database_subnet_ids
-  
-  # 보안 그룹 설정
-  # allowed_security_group_ids = [
-    # module.eks.cluster_security_group_id,
-    # module.lambda.security_group_id
-  # ]
+ 
   allowed_security_groups = [
-    module.eks.cluster_security_group_id,
-    module.lambda_log_processor.security_group_id
+    module.eks.cluster_security_group_id
   ]
   # 데이터베이스 설정
   engine                 = "postgres"
@@ -239,99 +233,6 @@ module "rds" {
     Environment = var.environment
   }
 }
-
-# =========================================
-# Lambda Module - log-processor 함수
-# =========================================
-module "lambda_log_processor" {
-  source = "./modules/lambda"
-
-  function_name = "log-processor"
-  project_name  = var.project_name
-  runtime       = "python3.9"
-  handler       = "handler.lambda_handler"
-  timeout       = 300
-  memory_size   = 512
-  source_path   = "../lambda/log-processor"
-
-  environment_variables = {
-    # DYNAMODB_TABLE = module.dynamodb_security_logs.table_name["security-logs-metadata"]
-    DYNAMODB_TABLE = module.dynamodb_security_logs.table_name
-    S3_BUCKET      = module.s3.logs_bucket_id
-    RDS_ENDPOINT   = module.rds.db_instance_endpoint
-  }
-
-  vpc_config = {
-    vpc_id                        = module.vpc.vpc_id
-    subnet_ids                    = module.vpc.private_subnet_ids
-    additional_security_group_ids = []
-  }
-
-  custom_policy_json = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
-        ]
-        # Resource = module.dynamodb_security_logs.table_arn["*"]
-        Resource = module.dynamodb_security_logs.table_arn
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = "${module.s3.logs_bucket_arn}/*"
-      }
-    ]
-  })
-
-  common_tags = {
-    Component   = "Serverless"
-    Environment = var.environment
-  }
-}
-
-# =========================================
-# Lambda Module - security-alert 함수
-# =========================================
-module "lambda_security_alert" {
-  source = "./modules/lambda"
-
-  function_name = "security-alert"
-  project_name  = var.project_name
-  runtime       = "python3.9"
-  handler       = "handler.lambda_handler"
-  timeout       = 60
-  memory_size   = 256
-  source_path   = "../lambda/security-alert"
-
-  environment_variables = {
-    SLACK_WEBHOOK_URL = var.slack_webhook_url
-    EMAIL_TOPIC_ARN   = aws_sns_topic.security_alerts.arn
-  }
-
-  vpc_config = {
-    vpc_id                        = module.vpc.vpc_id
-    subnet_ids                    = module.vpc.private_subnet_ids
-    additional_security_group_ids = []
-  }
-
-  common_tags = {
-    Component   = "Serverless"
-    Environment = var.environment
-  }
-}
-
 
 # =========================================
 # EKS Module - Kubernetes 클러스터

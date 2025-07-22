@@ -15,8 +15,6 @@ terraform import module.dynamodb_user_sessions.aws_dynamodb_table.main "user-ses
 # IAM Roles
 terraform import module.eks.aws_iam_role.cluster "dev-app-dev-eks-eks-cluster-role"
 terraform import module.eks.aws_iam_role.node_group "dev-app-dev-eks-eks-node-group-role"
-terraform import module.lambda_log_processor.aws_iam_role.lambda "log-processor-execution-role"
-terraform import module.lambda_security_alert.aws_iam_role.lambda "security-alert-execution-role"
 
 # RDS 관련
 terraform import module.rds.aws_db_subnet_group.main "dev-app-db-subnet-group"
