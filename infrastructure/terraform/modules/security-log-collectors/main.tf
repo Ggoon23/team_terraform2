@@ -294,6 +294,10 @@ resource "aws_securityhub_account" "main" {
   count                    = var.enable_security_hub ? 1 : 0
   enable_default_standards = var.security_hub_enable_default_standards
 
+  lifecycle {
+    ignore_changes = [enable_default_standards]
+  }
+
   control_finding_generator = var.security_hub_control_finding_generator
 
   # tags = merge(var.common_tags, {
@@ -370,7 +374,7 @@ resource "aws_iam_role" "config" {
 resource "aws_iam_role_policy_attachment" "config" {
   count      = var.enable_aws_config ? 1 : 0
   role       = aws_iam_role.config[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/ConfigRole"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigServiceRole"
 }
 
 resource "aws_iam_role_policy" "config_s3" {

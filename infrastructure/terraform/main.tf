@@ -378,7 +378,7 @@ module "security_log_collectors" {
   environment  = var.environment
 
   # 필수 인자 추가
-  s3_bucket_name = module.s3.logs_bucket_id
+  s3_bucket_name = module.s3_bucket_name
   kms_key_arn    = aws_kms_key.main.arn
 
   # VPC 설정
@@ -604,4 +604,95 @@ resource "aws_iam_role_policy" "eks_app_policy" {
       }
     ]
   })
+}
+
+# =========================================
+# Application Load Balancer
+# =========================================
+resource "aws_lb" "main" {
+  count              = var.enable_load_balancer ? 1 : 0
+  name               = "${var.project_name}-${var.environment}-alb"
+  internal           = false
+  load_balancer_type = var.lb_type
+  security_groups    = [aws_security_group.alb[0].id]
+  subnets            = module.vpc.public_subnets
+
+  enable_deletion_protection = var.environment == "prod"
+
+  tags = {
+    Name        = "${var.project_name}-${var.environment}-alb"
+    Environment = var.environment
+    Component   = "LoadBalancer"
+  }
+}
+
+# ALB Target Group
+resource "aws_lb_target_group" "app" {
+  count    = var.enable_load_balancer ? 1 : 0
+  name     = "${var.project_name}-${var.environment}-tg"
+  port     = var.application_port
+  protocol = "HTTP"
+  vpc_id   = module.vpc.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    path                = var.health_check_path
+    matcher             = "200"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+  }
+
+  tags = {
+    Name = "${var.project_name}-${var.environment}-tg"
+  }
+}
+
+# ALB Listener (HTTP)
+resource "aws_lb_listener" "app_http" {
+  count             = var.enable_load_balancer ? 1 : 0
+  load_balancer_arn = aws_lb.main[0].arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = var.ssl_certificate_arn != "" ? "redirect" : "forward"
+    
+    dynamic "redirect" {
+      for_each = var.ssl_certificate_arn != "" ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    dynamic "forward" {
+      for_each = var.ssl_certificate_arn == "" ? [1] : []
+      content {
+        target_group {
+          arn = aws_lb_target_group.app[0].arn
+        }
+      }
+    }
+  }
+}
+
+# ALB Listener (HTTPS)
+resource "aws_lb_listener" "app_https" {
+  count             = var.enable_load_balancer && var.ssl_certificate_arn != "" ? 1 : 0
+  load_balancer_arn = aws_lb.main[0].arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  certificate_arn   = var.ssl_certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app[0].arn
+  }
 }
