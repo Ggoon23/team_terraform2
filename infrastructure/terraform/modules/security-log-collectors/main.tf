@@ -309,15 +309,13 @@ resource "aws_securityhub_account" "main" {
 # Security Hub 표준 구독
 resource "aws_securityhub_standards_subscription" "aws_foundational" {
   count         = var.enable_security_hub && var.security_hub_enable_aws_foundational ? 1 : 0
-  standards_arn = "arn:aws:securityhub:::ruleset/finding-format/aws-foundational-security-best-practices/v/1.0.0"
-
+  standards_arn = "arn:aws:securityhub:ap-northeast-2::standard/aws-foundational-security-best-practices/v/1.0.0"
   depends_on = [aws_securityhub_account.main]
 }
 
 resource "aws_securityhub_standards_subscription" "cis" {
   count         = var.enable_security_hub && var.security_hub_enable_cis ? 1 : 0
-  standards_arn = "arn:aws:securityhub:::ruleset/finding-format/cis-aws-foundations-benchmark/v/1.2.0"
-
+  standards_arn = "arn:aws:securityhub:ap-northeast-2::standard/cis-aws-foundations-benchmark/v/1.2.0"
   depends_on = [aws_securityhub_account.main]
 }
 
@@ -374,7 +372,7 @@ resource "aws_iam_role" "config" {
 resource "aws_iam_role_policy_attachment" "config" {
   count      = var.enable_aws_config ? 1 : 0
   role       = aws_iam_role.config[0].name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWS_ConfigServiceRole"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/ConfigRole"
 }
 
 resource "aws_iam_role_policy" "config_s3" {
@@ -407,9 +405,9 @@ resource "aws_iam_role_policy" "config_s3" {
 
 # AWS Inspector V2 설정
 resource "aws_inspector2_enabler" "main" {
-  count           = var.enable_inspector ? 1 : 0
-  account_ids     = [data.aws_caller_identity.current.account_id]
-  resource_types  = var.inspector_resource_types
+  count          = var.enable_inspector ? 1 : 0
+  account_ids    = [data.aws_caller_identity.current.account_id]
+  resource_types = ["ECR", "EC2"]
 }
 
 # VPC Flow Logs 설정
