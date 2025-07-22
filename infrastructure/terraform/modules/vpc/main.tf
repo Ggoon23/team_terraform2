@@ -87,7 +87,7 @@ resource "aws_subnet" "database" {
 
 # Elastic IP for NAT Gateway
 resource "aws_eip" "nat" {
-  count  = var.enable_nat_gateway ? length(var.public_subnet_cidrs) : 0
+  count  = var.enable_nat_gateway ? 1 : 0
   domain = "vpc"
 
   depends_on = [aws_internet_gateway.main]
@@ -95,25 +95,19 @@ resource "aws_eip" "nat" {
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-nat-eip-${count.index + 1}"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # NAT Gateway 생성 (각 AZ마다)
 resource "aws_nat_gateway" "main" {
-  count         = var.enable_nat_gateway ? length(var.public_subnet_cidrs) : 0
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
+  count         = var.enable_nat_gateway ? 1 : 0
+  allocation_id = aws_eip.nat[0].id
+  subnet_id     = aws_subnet.public[0].id
 
   depends_on = [aws_internet_gateway.main]
 
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-nat-gw-${count.index + 1}"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
 }
 
 # 퍼블릭 라우팅 테이블
@@ -136,7 +130,6 @@ resource "aws_route_table" "public" {
 
 # 프라이빗 라우팅 테이블 (각 AZ마다)
 resource "aws_route_table" "private" {
-  # count  = var.enable_nat_gateway ? length(var.private_subnet_cidrs) : 1
   count = length(var.private_subnet_cidrs)
   vpc_id = aws_vpc.main.id
 
@@ -144,8 +137,7 @@ resource "aws_route_table" "private" {
     for_each = var.enable_nat_gateway ? [1] : []
     content {
       cidr_block     = "0.0.0.0/0"
-      # nat_gateway_id = aws_nat_gateway.main[count.index].id
-      nat_gateway_id = element(aws_nat_gateway.main[*].id, count.index % length(aws_nat_gateway.main))
+      nat_gateway_id = aws_nat_gateway.main[0].id
     }
   }
 

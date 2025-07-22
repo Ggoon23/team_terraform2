@@ -192,13 +192,6 @@ variable "inspector_resource_types" {
   description = "Inspector가 스캔할 리소스 타입"
   type        = list(string)
   default     = ["ECR", "EC2"]
-  validation {
-    condition = alltrue([
-      for type in var.inspector_resource_types :
-      contains(["ECR", "EC2", "LAMBDA"], type)
-    ])
-    error_message = "유효한 리소스 타입: ECR, EC2, LAMBDA"
-  }
 }
 
 # VPC Flow Logs 설정
