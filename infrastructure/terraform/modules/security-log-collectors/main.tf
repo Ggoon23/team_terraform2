@@ -144,6 +144,15 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
         }
       },
       {
+        Sid    = "AWSCloudTrailGetBucketLocation"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "s3:GetBucketLocation"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+      },
+      {
         Sid    = "AWSConfigBucketPermissionsCheck"
         Effect = "Allow"
         Principal = {
@@ -151,6 +160,11 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
         }
         Action   = "s3:GetBucketAcl"
         Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       },
       {
         Sid    = "AWSConfigBucketExistenceCheck"
@@ -160,6 +174,11 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
         }
         Action   = "s3:ListBucket"
         Resource = "arn:aws:s3:::${var.s3_bucket_name}"
+        Condition = {
+          StringEquals = {
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
       },
       {
         Sid    = "AWSConfigBucketDelivery"
@@ -172,8 +191,47 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
         Condition = {
           StringEquals = {
             "s3:x-amz-acl" = "bucket-owner-full-control"
+            "AWS:SourceAccount" = data.aws_caller_identity.current.account_id
           }
         }
+      }
+    ]
+  })
+}
+
+# CloudTrail용 KMS 키 정책
+resource "aws_kms_key_policy" "cloudtrail_kms" {
+  count  = var.kms_key_arn != null ? 1 : 0
+  key_id = var.kms_key_arn
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowCloudTrailEncrypt"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:EncryptionContext:aws:cloudtrail:arn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
+          }
+        }
+      },
+      {
+        Sid    = "AllowCloudTrailDescribeKey"  
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "kms:DescribeKey"
+        Resource = "*"
       }
     ]
   })
@@ -309,13 +367,13 @@ resource "aws_securityhub_account" "main" {
 # Security Hub 표준 구독
 resource "aws_securityhub_standards_subscription" "aws_foundational" {
   count         = var.enable_security_hub && var.security_hub_enable_aws_foundational ? 1 : 0
-  standards_arn = "arn:aws:securityhub:ap-northeast-2::standard/aws-foundational-security-best-practices/v/1.0.0"
+  standards_arn = "arn:aws:securityhub:::standard/aws-foundational-security-best-practices/v/1.0.0"
   depends_on = [aws_securityhub_account.main]
 }
 
 resource "aws_securityhub_standards_subscription" "cis" {
   count         = var.enable_security_hub && var.security_hub_enable_cis ? 1 : 0
-  standards_arn = "arn:aws:securityhub:ap-northeast-2::standard/cis-aws-foundations-benchmark/v/1.2.0"
+  standards_arn = "arn:aws:securityhub:::standard/cis-aws-foundations-benchmark/v/1.2.0"
   depends_on = [aws_securityhub_account.main]
 }
 
@@ -407,7 +465,7 @@ resource "aws_iam_role_policy" "config_s3" {
 resource "aws_inspector2_enabler" "main" {
   count          = var.enable_inspector ? 1 : 0
   account_ids    = [data.aws_caller_identity.current.account_id]
-  resource_types = ["ECR", "EC2"]
+  resource_types = var.inspector_resource_types
 }
 
 # VPC Flow Logs 설정
