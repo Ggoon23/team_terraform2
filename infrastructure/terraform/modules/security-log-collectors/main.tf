@@ -47,16 +47,6 @@ resource "aws_cloudtrail" "main" {
   cloud_watch_logs_group_arn = var.cloudtrail_cloudwatch_logs_enabled ? aws_cloudwatch_log_group.cloudtrail[0].arn : null
   cloud_watch_logs_role_arn  = var.cloudtrail_cloudwatch_logs_enabled ? aws_iam_role.cloudtrail_cloudwatch[0].arn : null
 
-  # CloudWatch Logs 통합
-  # dynamic "cloud_watch_logs_group_arn" {
-
-    # for_each = var.cloudtrail_cloudwatch_logs_enabled ? [1] : []
-    # content {
-      # cloud_watch_logs_group_arn = aws_cloudwatch_log_group.cloudtrail[0].arn
-      # cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cloudwatch[0].arn
-    # }
-  # }
-
   tags = merge(var.common_tags, {
     Name = "${var.project_name}-cloudtrail"
     Type = "Security Audit Trail"
