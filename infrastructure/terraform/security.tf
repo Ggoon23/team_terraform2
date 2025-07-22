@@ -112,9 +112,6 @@ resource "aws_security_group_rule" "lambda_https_egress" {
   cidr_blocks       = ["0.0.0.0/0"]
   security_group_id = module.lambda_log_processor.security_group_id
   description       = "Lambda HTTPS outbound for AWS API calls"
-
-  lifecycle {
-    ignore_changes = [security_group_id]
 }
 
 # =========================================
@@ -319,7 +316,7 @@ resource "aws_security_group" "monitoring" {
 }
 
 # =========================================
-# 보안 정책 문서 생성
+# 보안 정책 문서 생성 (locals 블록을 파일 상단으로 이동)
 # =========================================
 locals {
   security_policy_document = {
@@ -370,7 +367,6 @@ resource "aws_ssm_parameter" "security_policy" {
   name  = "/${var.project_name}/${var.environment}/security/policy"
   type  = "String"
   value = jsonencode(local.security_policy_document)
-  overwrite = true
   
   description = "Security policy document for ${var.project_name} ${var.environment}"
   
