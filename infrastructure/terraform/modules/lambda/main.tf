@@ -18,7 +18,7 @@ resource "aws_kms_key" "lambda" {
 
 resource "aws_kms_alias" "lambda" {
   count         = var.create_kms_key ? 1 : 0
-  name          = "alias/${var.project_name}-lambda"
+  name          = "alias/${var.project_name}-${var.function_name}-lambda"
   target_key_id = aws_kms_key.lambda[0].key_id
 }
 

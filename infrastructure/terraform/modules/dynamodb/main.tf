@@ -18,7 +18,7 @@ resource "aws_kms_key" "dynamodb" {
 
 resource "aws_kms_alias" "dynamodb" {
   count         = var.create_kms_key ? 1 : 0
-  name          = "alias/${var.project_name}-dynamodb"
+  name          = "alias/${var.project_name}-${var.table_name}-dynamodb"
   target_key_id = aws_kms_key.dynamodb[0].key_id
 }
 
