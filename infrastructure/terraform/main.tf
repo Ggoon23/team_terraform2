@@ -378,7 +378,7 @@ module "security_log_collectors" {
   environment  = var.environment
 
   # 필수 인자 추가
-  s3_bucket_name = module.s3_bucket_name
+  s3_bucket_name = module.s3.logs_bucket_id
   kms_key_arn    = aws_kms_key.main.arn
 
   # VPC 설정
@@ -615,7 +615,7 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = var.lb_type
   security_groups    = [aws_security_group.alb[0].id]
-  subnets            = module.vpc.public_subnets
+  subnets            = module.vpc.public_subnet_ids
 
   enable_deletion_protection = var.environment == "prod"
 

@@ -469,7 +469,7 @@ data "tls_certificate" "eks" {
 }
 
 resource "aws_iam_openid_connect_provider" "eks" {
-  count = var.enable_irsa ? 1 : 0
+  count = (var.enable_irsa || var.enable_load_balancer) ? 1 : 0
 
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = [data.tls_certificate.eks.certificates[0].sha1_fingerprint]
@@ -478,7 +478,6 @@ resource "aws_iam_openid_connect_provider" "eks" {
   tags = merge(var.common_tags, {
     Name = "${var.cluster_name}-oidc-provider"
   })
-
 }
 
 # =========================================
@@ -689,15 +688,4 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_attach" 
   count      = var.enable_load_balancer ? 1 : 0
   role       = aws_iam_role.aws_load_balancer_controller[0].name
   policy_arn = aws_iam_policy.aws_load_balancer_controller[0].arn
-}
-
-resource "aws_iam_openid_connect_provider" "eks" {
-  count          = var.enable_load_balancer ? 1 : 0
-  client_id_list = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.eks[0].certificates[0].sha1_fingerprint]
-  url            = aws_eks_cluster.main.identity[0].oidc[0].issuer
-
-  tags = merge(var.common_tags, {
-    Name = "${var.cluster_name}-eks-irsa"
-  })
 }
