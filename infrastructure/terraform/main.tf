@@ -16,7 +16,6 @@ module "vpc" {
   source = "./modules/vpc"
 
   project_name        = var.project_name
-  environment         = var.environment
   vpc_cidr            = var.vpc_cidr
   public_subnet_cidrs = var.public_subnets
   private_subnet_cidrs = var.private_subnets
@@ -25,11 +24,11 @@ module "vpc" {
   enable_nat_gateway     = true
   enable_dns_hostnames   = true
   enable_dns_support     = true
-  enable_vpc_flow_logs   = true
+  enable_vpc_flow_logs   = var.enable_vpc_flow_logs
 
-  common_tags = {
+  common_tags = merge(local.common_tags, {
     Component = "Networking"
-  }
+  })
 }
 
 # =========================================
@@ -41,30 +40,135 @@ module "s3" {
   project_name = var.project_name
 
   # 로깅용 S3 버킷들
-  # create_logging_bucket     = true
   create_backups_bucket     = true
-  # create_application_bucket = true
   create_artifacts_bucket   = true
 
   # 보안 설정
   enable_versioning           = true
-  # enable_server_side_encryption = true
   enable_mfa_delete          = false
-  # enable_public_access_block = true
 
-  # 라이프사이클 관련 변수 (lifecycle_rules 대신)
+  # 라이프사이클 관련 변수
   transition_to_ia_days           = 30
   transition_to_glacier_days      = 90
   transition_to_deep_archive_days = 180
   log_retention_days              = 365
   backup_retention_days           = 2555
 
-  # 라이프사이클 정책(제거)
-
-  common_tags = {
+  common_tags = merge(local.common_tags, {
     Component = "Storage"
-    Environment = var.environment
-  }
+  })
+}
+
+# =========================================
+# KMS Key for Encryption (중앙 집중식)
+# =========================================
+resource "aws_kms_key" "main" {
+  description             = "KMS key for ${var.project_name}"
+  deletion_window_in_days = 7
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow EKS Service"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-kms"
+    Component = "Security"
+  })
+}
+
+resource "aws_kms_alias" "main" {
+  name          = "alias/${var.project_name}"
+  target_key_id = aws_kms_key.main.key_id
+}
+
+# =========================================
+# EKS Module - Kubernetes 클러스터
+# =========================================
+module "eks" {
+  source = "./modules/eks"
+
+  project_name = var.project_name
+
+  # 클러스터 설정
+  cluster_name    = local.cluster_name
+  cluster_version = "1.33"
+
+  # 네트워크 설정
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  subnet_ids         = module.vpc.private_subnet_ids
+
+  # 보안 설정
+  cluster_endpoint_private_access = true
+  cluster_endpoint_public_access  = true
+  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]
+
+  # 로깅 설정
+  cluster_enabled_log_types = [
+    "api",
+    "audit", 
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ]
+  log_retention_days = var.security_log_retention_days
+
+  # IRSA 설정
+  enable_irsa = true
+  
+  # 애드온 설정
+  enable_vpc_cni_addon    = true
+  enable_coredns_addon    = true
+  enable_kube_proxy_addon = true
+  
+  # 노드 그룹 설정
+  node_group_name = "${var.project_name}-nodes"
+  eks_node_instance_types = var.eks_node_instance_types
+  capacity_type = var.enable_spot_instances ? "SPOT" : "ON_DEMAND"
+  
+  # 스케일링 설정
+  eks_node_desired_capacity = var.eks_node_desired_capacity
+  eks_node_max_capacity     = var.eks_node_max_capacity
+  eks_node_min_capacity     = var.eks_node_min_capacity
+  
+  # 보안 설정
+  enable_ssh_access = var.enable_bastion_host
+  ec2_key_pair_name = var.ec2_key_pair_name
+  
+  # 시작 템플릿 설정
+  create_launch_template = true
+  ebs_volume_type = "gp3"
+  ebs_volume_size = 30
+
+  common_tags = merge(local.common_tags, {
+    Component = "Compute"
+  })
+
+  depends_on = [module.vpc, aws_kms_key.main]
 }
 
 # =========================================
@@ -76,11 +180,10 @@ module "dynamodb_security_logs" {
   source = "./modules/dynamodb"
 
   project_name = var.project_name
-  environment  = var.environment
 
   # 테이블 기본 설정
   table_name   = "security-logs-metadata"
-  billing_mode = "PAY_PER_REQUEST"
+  billing_mode = var.dynamodb_billing_mode
   hash_key     = "log_id"
   range_key    = "timestamp"
   
@@ -124,10 +227,10 @@ module "dynamodb_security_logs" {
   create_kms_key = true
   
   # 태그
-  common_tags = {
+  common_tags = merge(local.common_tags, {
     Component = "Database"
     DataType  = "SecurityLogs"
-  }
+  })
 }
 
 # 사용자 세션 테이블
@@ -135,11 +238,10 @@ module "dynamodb_user_sessions" {
   source = "./modules/dynamodb"
 
   project_name = var.project_name
-  environment  = var.environment
 
   # 테이블 기본 설정
   table_name   = "user-sessions"
-  billing_mode = "PAY_PER_REQUEST"
+  billing_mode = var.dynamodb_billing_mode
   hash_key     = "session_id"
   range_key    = null
   
@@ -178,10 +280,10 @@ module "dynamodb_user_sessions" {
   create_kms_key = true
   
   # 태그
-  common_tags = {
+  common_tags = merge(local.common_tags, {
     Component = "Database"
     DataType  = "UserSessions"
-  }
+  })
 }
 
 # =========================================
@@ -199,6 +301,7 @@ module "rds" {
   allowed_security_groups = [
     module.eks.cluster_security_group_id
   ]
+  
   # 데이터베이스 설정
   engine                 = "postgres"
   engine_version         = "16.4"
@@ -207,113 +310,43 @@ module "rds" {
   max_allocated_storage  = 100
 
   # 인증 설정
-  # db_name  = var.db_name
-  # username = var.db_username
-  # master_password = var.db_password  # 실제 환경에서는 AWS Secrets Manager 사용 권장
-
-  database_name     = var.db_name           # ✅ 수정됨
-  master_username   = var.db_username       # ✅ 수정됨
-  master_password   = var.db_password       # ✅ 수정됨
+  database_name     = var.db_name
+  master_username   = var.db_username
+  master_password   = var.db_password
 
   # 백업 설정
-  backup_retention_period = 7
+  backup_retention_period = var.backup_retention_days
   backup_window          = "03:00-04:00"
   maintenance_window     = "sun:04:00-sun:05:00"
 
   # 모니터링 설정
   monitoring_interval = 60
   enabled_cloudwatch_logs_exports = ["postgresql"]
+  log_retention_days = var.security_log_retention_days
 
-  # Multi-AZ 설정 (운영 환경에서는 true 권장)
-  multi_az = false
-
-  common_tags = {
-    Component = "Database"
-    Environment = var.environment
-  }
-}
-
-# =========================================
-# EKS Module - Kubernetes 클러스터
-# =========================================
-module "eks" {
-  source = "./modules/eks"
-
-  project_name = var.project_name
-  environment  = var.environment
-
-  # 클러스터 설정
-  cluster_name    = "${var.project_name}-${var.environment}-eks"
-  cluster_version = "1.27"
-
-  # 네트워크 설정
-  vpc_id                    = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
-  subnet_ids               = module.vpc.private_subnet_ids
-  # control_plane_subnet_ids = module.vpc.private_subnet_ids
+  # Multi-AZ 설정
+  multi_az = var.enable_multi_az
 
   # 보안 설정
-  cluster_endpoint_private_access = true
-  cluster_endpoint_public_access  = true
-  cluster_endpoint_public_access_cidrs = ["0.0.0.0/0"]  # 운영환경에서는 제한 필요
-
-  # 로깅 설정
-  cluster_enabled_log_types = [
-    "api",
-    "audit",
-    "authenticator",
-    "controllerManager",
-    "scheduler"
-  ]
-
-}
-
-# =========================================
-# Security Log Collectors Module
-# =========================================
-module "security_log_collectors" {
-  source = "./modules/security-log-collectors"
-
-  project_name = var.project_name
-  environment  = var.environment
-
-  # 필수 인자 추가
-  s3_bucket_name = module.s3.logs_bucket_id
-  kms_key_arn    = aws_kms_key.main.arn
-
-  # VPC 설정
-  vpc_id = module.vpc.vpc_id
+  deletion_protection = false
   
-  # CloudTrail 설정
-  enable_cloudtrail = true
-  
-  # GuardDuty 설정
-  enable_guardduty = true
-  
-  # Security Hub 설정
-  enable_security_hub = true
-  
-  # AWS Config 설정
-  enable_aws_config = true
-  
-  # VPC Flow Logs 설정
-  enable_vpc_flow_logs = true
+  common_tags = merge(local.common_tags, {
+    Component = "Database"
+  })
 
-  common_tags = {
-    Component = "Security-Monitoring"
-  }
+  depends_on = [module.vpc]
 }
 
 # =========================================
 # SNS Topic for Security Alerts
 # =========================================
 resource "aws_sns_topic" "security_alerts" {
-  name = "${var.project_name}-${var.environment}-security-alerts"
+  name = "${var.project_name}-security-alerts"
 
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-security-alerts"
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-security-alerts"
     Component = "Notifications"
-  }
+  })
 }
 
 resource "aws_sns_topic_subscription" "email_alerts" {
@@ -324,10 +357,33 @@ resource "aws_sns_topic_subscription" "email_alerts" {
 }
 
 # =========================================
+# CloudWatch Log Groups (중앙 집중식)
+# =========================================
+resource "aws_cloudwatch_log_group" "application_logs" {
+  name              = "/aws/application/${var.project_name}"
+  retention_in_days = var.log_retention_days
+
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-app-logs"
+    Component = "Monitoring"
+  })
+}
+
+resource "aws_cloudwatch_log_group" "security_logs" {
+  name              = "/aws/security/${var.project_name}"
+  retention_in_days = var.security_log_retention_days
+
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-security-logs"
+    Component = "Monitoring"
+  })
+}
+
+# =========================================
 # Bastion Host Security Group (EKS 접근용)
 # =========================================
 resource "aws_security_group" "bastion" {
-  name_prefix = "${var.project_name}-${var.environment}-bastion"
+  name_prefix = "${var.project_name}-bastion"
   vpc_id      = module.vpc.vpc_id
   description = "Security group for bastion host access"
 
@@ -347,107 +403,17 @@ resource "aws_security_group" "bastion" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-bastion-sg"
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-bastion-sg"
     Component = "Security"
-  }
-}
-
-# =========================================
-# CloudWatch Log Groups
-# =========================================
-resource "aws_cloudwatch_log_group" "application_logs" {
-  name              = "/aws/application/${var.project_name}-${var.environment}"
-  retention_in_days = 30
-
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-app-logs"
-    Component = "Monitoring"
-  }
-}
-
-resource "aws_cloudwatch_log_group" "security_logs" {
-  name              = "/aws/security/${var.project_name}-${var.environment}"
-  retention_in_days = 90
-
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-security-logs"
-    Component = "Monitoring"
-  }
-}
-
-# =========================================
-# KMS Key for Encryption
-# =========================================
-resource "aws_kms_key" "main" {
-  description             = "KMS key for ${var.project_name} ${var.environment}"
-  deletion_window_in_days = 7
-  enable_key_rotation     = true
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "Enable IAM User Permissions"
-        Effect = "Allow"
-        Principal = {
-          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
-        }
-        Action   = "kms:*"
-        Resource = "*"
-      },
-      {
-        Sid    = "Allow EKS Service"
-        Effect = "Allow"
-        Principal = {
-          Service = "eks.amazonaws.com"
-        }
-        Action = [
-          "kms:Decrypt",
-          "kms:GenerateDataKey"
-        ]
-        Resource = "*"
-      },
-      # CloudTrail 권한 추가
-      {
-        Sid    = "Allow CloudTrail Encrypt"
-        Effect = "Allow"
-        Principal = {
-          Service = "cloudtrail.amazonaws.com"
-        }
-        Action = [
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey",
-          "kms:Encrypt",
-          "kms:ReEncrypt*",
-          "kms:CreateGrant"
-        ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "kms:EncryptionContext:aws:cloudtrail:arn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
-          }
-        }
-      }
-    ]
   })
-
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-kms"
-    Component = "Security"
-  }
-}
-
-resource "aws_kms_alias" "main" {
-  name          = "alias/${var.project_name}-${var.environment}"
-  target_key_id = aws_kms_key.main.key_id
 }
 
 # =========================================
 # IAM Role for EKS Applications
 # =========================================
 resource "aws_iam_role" "eks_app_role" {
-  name = "${var.project_name}-${var.environment}-eks-app-role"
+  name = "${var.project_name}-eks-app-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -467,10 +433,10 @@ resource "aws_iam_role" "eks_app_role" {
     ]
   })
 
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-eks-app-role"
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-eks-app-role"
     Component = "Security"
-  }
+  })
 }
 
 # EKS 애플리케이션용 정책 연결
@@ -503,8 +469,10 @@ resource "aws_iam_role_policy" "eks_app_policy" {
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
-        # Resource = module.dynamodb_security_logs.table_arn["*"]  # 또는 values(...)
-        Resource = module.dynamodb_security_logs.table_arn
+        Resource = [
+          module.dynamodb_security_logs.table_arn,
+          module.dynamodb_user_sessions.table_arn
+        ]
       },
       {
         Effect = "Allow"
@@ -519,101 +487,90 @@ resource "aws_iam_role_policy" "eks_app_policy" {
         Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
-          "logs:PutLogEvents"
+          "logs:PutLogEvents",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams"
         ]
-        Resource = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:*"
+        Resource = [
+          aws_cloudwatch_log_group.application_logs.arn,
+          aws_cloudwatch_log_group.security_logs.arn,
+          "${aws_cloudwatch_log_group.application_logs.arn}:*",
+          "${aws_cloudwatch_log_group.security_logs.arn}:*"
+        ]
       }
     ]
   })
 }
 
 # =========================================
-# Application Load Balancer
+# Application Load Balancer (선택사항)
 # =========================================
 resource "aws_lb" "main" {
   count              = var.enable_load_balancer ? 1 : 0
-  name               = "${var.project_name}-${var.environment}-alb"
+  name               = "${var.project_name}-alb"
   internal           = false
   load_balancer_type = var.lb_type
   security_groups    = [aws_security_group.alb[0].id]
   subnets            = module.vpc.public_subnet_ids
 
-  enable_deletion_protection = var.environment == "prod"
+  enable_deletion_protection = false
 
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-alb"
-    Environment = var.environment
+  tags = merge(local.common_tags, {
+    Name        = "${var.project_name}-alb"
     Component   = "LoadBalancer"
-  }
+  })
 }
 
-# ALB Target Group
-resource "aws_lb_target_group" "app" {
-  count    = var.enable_load_balancer ? 1 : 0
-  name     = "${var.project_name}-${var.environment}-tg"
-  port     = var.application_port
-  protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
-  target_type = "ip"
+resource "aws_security_group" "alb" {
+  count       = var.enable_load_balancer ? 1 : 0
+  name_prefix = "${var.project_name}-alb"
+  vpc_id      = module.vpc.vpc_id
+  description = "Security group for Application Load Balancer"
 
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    timeout             = 5
-    interval            = 30
-    path                = var.health_check_path
-    matcher             = "200"
-    port                = "traffic-port"
-    protocol            = "HTTP"
+  # HTTP 접근 허용
+  ingress {
+    description = "HTTP"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "${var.project_name}-${var.environment}-tg"
+  # HTTPS 접근 허용
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
+
+  # 모든 outbound 트래픽 허용
+  egress {
+    description = "All outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-alb-sg"
+    Component = "LoadBalancer"
+  })
 }
 
-# ALB Listener (HTTP)
-resource "aws_lb_listener" "app_http" {
-  count             = var.enable_load_balancer ? 1 : 0
-  load_balancer_arn = aws_lb.main[0].arn
-  port              = "80"
-  protocol          = "HTTP"
-
-  default_action {
-    type = var.ssl_certificate_arn != "" ? "redirect" : "forward"
-    
-    dynamic "redirect" {
-      for_each = var.ssl_certificate_arn != "" ? [1] : []
-      content {
-        port        = "443"
-        protocol    = "HTTPS"
-        status_code = "HTTP_301"
-      }
-    }
-
-    dynamic "forward" {
-      for_each = var.ssl_certificate_arn == "" ? [1] : []
-      content {
-        target_group {
-          arn = aws_lb_target_group.app[0].arn
-        }
-      }
-    }
-  }
-}
-
-# ALB Listener (HTTPS)
-resource "aws_lb_listener" "app_https" {
-  count             = var.enable_load_balancer && var.ssl_certificate_arn != "" ? 1 : 0
-  load_balancer_arn = aws_lb.main[0].arn
-  port              = "443"
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
-  certificate_arn   = var.ssl_certificate_arn
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app[0].arn
-  }
+# =========================================
+# Local Values (공통 설정)
+# =========================================
+locals {
+  cluster_name = var.cluster_name != "" ? var.cluster_name : "${var.project_name}-eks"
+  
+  common_tags = merge(var.additional_tags, {
+    Terraform   = "true"
+    Project     = var.project_name
+    Owner       = var.owner
+    ManagedBy   = "Terraform"
+    CostCenter  = var.cost_center
+  })
 }

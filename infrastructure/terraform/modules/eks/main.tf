@@ -96,28 +96,6 @@ resource "aws_security_group" "cluster" {
     create_before_destroy = true
     ignore_changes = [tags_all]
   }
-
-}
-
-# Splunk 통신 포트 추가 (기존 security group에 추가)
-resource "aws_security_group_rule" "splunk_forwarder_ports" {
-  type              = "ingress"
-  from_port         = 9997
-  to_port           = 9997
-  protocol          = "tcp"
-  cidr_blocks       = ["10.0.0.0/8"]  # VPC CIDR 범위로 조정
-  security_group_id = aws_security_group.node_group.id
-  description       = "Splunk forwarder communication"
-}
-
-resource "aws_security_group_rule" "splunk_web_interface" {
-  type              = "ingress"
-  from_port         = 8089
-  to_port           = 8089
-  protocol          = "tcp"
-  cidr_blocks       = ["10.0.0.0/8"]  # 관리 네트워크만 허용
-  security_group_id = aws_security_group.node_group.id
-  description       = "Splunk management interface"
 }
 
 # EKS 클러스터
@@ -149,6 +127,7 @@ resource "aws_eks_cluster" "main" {
     Name = var.cluster_name
     Type = "EKS Cluster"
   })
+  
   depends_on = [
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceController,
@@ -204,9 +183,6 @@ resource "aws_security_group" "node_group" {
   vpc_id      = var.vpc_id
   description = "Security group for EKS node group"
 
-  # ❌ 클러스터와 통신 부분 제거 (source_security_group_id는 여기서 사용 금지)
-  # -> 아래에서 aws_security_group_rule로 분리
-
   # 노드간 통신
   ingress {
     from_port   = 0
@@ -245,8 +221,6 @@ resource "aws_security_group" "node_group" {
     create_before_destroy = true
     ignore_changes = [tags_all]
   }
-    
-  
 }
 
 # 클러스터에서 노드 그룹으로 통신 허용
@@ -260,13 +234,11 @@ resource "aws_security_group_rule" "node_group_from_cluster" {
   description             = "Communication with EKS cluster"
 }
 
-
 # 시작 템플릿 (노드 그룹용)
 resource "aws_launch_template" "node_group" {
   count = var.create_launch_template ? 1 : 0
 
   name_prefix = "${var.cluster_name}-eks-node-"
-  image_id    = var.application_image
   instance_type = var.eks_node_instance_types[0]
   key_name      = var.ec2_key_pair_name
 

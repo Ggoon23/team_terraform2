@@ -81,44 +81,6 @@ resource "aws_security_group_rule" "rds_from_bastion" {
 # =========================================
 # Application Load Balancer 보안 그룹
 # =========================================
-resource "aws_security_group" "alb" {
-  count       = var.enable_load_balancer ? 1 : 0
-  name_prefix = "${var.project_name}-${var.environment}-alb"
-  vpc_id      = module.vpc.vpc_id
-  description = "Security group for Application Load Balancer"
-
-  # HTTP 접근 허용
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # HTTPS 접근 허용
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # 모든 outbound 트래픽 허용
-  egress {
-    description = "All outbound traffic"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name      = "${var.project_name}-${var.environment}-alb-sg"
-    Component = "LoadBalancer"
-  }
-}
 
 # ALB에서 EKS로의 접근 허용
 resource "aws_security_group_rule" "alb_to_eks" {

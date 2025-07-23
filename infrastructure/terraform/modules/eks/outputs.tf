@@ -270,6 +270,7 @@ output "eks_cluster_summary" {
   }
 }
 
+# AWS Load Balancer Controller 정보
 output "aws_load_balancer_controller_role_arn" {
   description = "AWS Load Balancer Controller IAM Role ARN"
   value       = var.enable_load_balancer ? aws_iam_role.aws_load_balancer_controller[0].arn : null

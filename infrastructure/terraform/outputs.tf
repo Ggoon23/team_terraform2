@@ -146,22 +146,6 @@ output "application_environment_variables" {
 }
 
 # =========================================
-# 보안 로그 수집기 정보
-# =========================================
-output "security_log_collectors_info" {
-  description = "보안 로그 수집기 정보"
-  value = {
-    cloudtrail_arn           = module.security_log_collectors.cloudtrail_arn
-    cloudtrail_log_group_name        = module.security_log_collectors.cloudtrail_log_group_name
-    guardduty_detector_id    = module.security_log_collectors.guardduty_detector_id
-    security_hub_arn         = module.security_log_collectors.security_hub_arn
-    config_recorder_name     = module.security_log_collectors.config_recorder_name
-    config_delivery_channel_name  = module.security_log_collectors.config_delivery_channel_name
-    vpc_flow_log_id        = module.security_log_collectors.vpc_flow_log_id
-  }
-}
-
-# =========================================
 # 보안 설정 정보
 # =========================================
 output "security_configuration" {
@@ -292,6 +276,5 @@ output "next_steps" {
     check_pods     = "kubectl get pods --all-namespaces"
     access_rds     = "Use the RDS endpoint: ${module.rds.db_instance_endpoint}"
     view_logs      = "Check CloudWatch logs in: ${aws_cloudwatch_log_group.application_logs.name}"
-    security_hub   = "Visit AWS Security Hub console to view security findings"
   }
 }
