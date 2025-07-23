@@ -275,3 +275,32 @@ output "aws_load_balancer_controller_role_arn" {
   description = "AWS Load Balancer Controller IAM Role ARN"
   value       = var.enable_load_balancer ? aws_iam_role.aws_load_balancer_controller[0].arn : null
 }
+
+# AWS Auth ConfigMap 정보
+output "aws_auth_configmap_yaml" {
+  description = "aws-auth ConfigMap YAML 내용"
+  value = {
+    mapRoles = yamlencode(local.all_role_mappings)
+    mapUsers = yamlencode(local.all_user_mappings)
+  }
+}
+
+output "current_user_access" {
+  description = "현재 사용자의 클러스터 접근 정보"
+  value = {
+    user_arn = data.aws_caller_identity.current.arn
+    username = "admin"
+    groups   = ["system:masters"]
+  }
+}
+
+# 클러스터 접근 확인 명령어
+output "access_verification_commands" {
+  description = "클러스터 접근 확인을 위한 명령어들"
+  value = {
+    update_kubeconfig = "aws eks update-kubeconfig --region ${data.aws_region.current.name} --name ${aws_eks_cluster.main.name}"
+    verify_access     = "kubectl auth can-i '*' '*' --all-namespaces"
+    get_configmap     = "kubectl get configmap aws-auth -n kube-system -o yaml"
+    test_connection   = "kubectl get nodes"
+  }
+}

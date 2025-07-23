@@ -244,3 +244,36 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+# AWS Auth 설정
+variable "map_roles" {
+  description = "추가로 매핑할 IAM 역할 목록"
+  type = list(object({
+    rolearn  = string
+    username = string
+    groups   = list(string)
+  }))
+  default = []
+}
+
+variable "map_users" {
+  description = "추가로 매핑할 IAM 사용자 목록"
+  type = list(object({
+    userarn  = string 
+    username = string
+    groups   = list(string)
+  }))
+  default = []
+}
+
+variable "cluster_admin_users" {
+  description = "클러스터 관리자 권한을 가질 IAM 사용자 ARN 목록"
+  type = list(string)
+  default = []
+}
+
+variable "cluster_admin_roles" {
+  description = "클러스터 관리자 권한을 가질 IAM 역할 ARN 목록"
+  type = list(string)
+  default = []
+}

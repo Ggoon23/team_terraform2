@@ -674,35 +674,65 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_attach" 
 # 데이터 소스 추가
 data "aws_caller_identity" "current" {}
 
-# Kubernetes ConfigMap을 통한 권한 설정
-resource "kubernetes_config_map_v1_data" "aws_auth" {
+# 현재 사용자를 관리자로 추가하기 위한 로컬 변수
+locals {
+  # 현재 사용자를 기본 관리자로 설정
+  current_user_map = [{
+    userarn  = data.aws_caller_identity.current.arn
+    username = "admin"
+    groups   = ["system:masters"]
+  }]
+  
+  # 추가 관리자 사용자들
+  admin_users_map = [
+    for user_arn in var.cluster_admin_users : {
+      userarn  = user_arn
+      username = split("/", user_arn)[length(split("/", user_arn)) - 1]
+      groups   = ["system:masters"]
+    }
+  ]
+  
+  # 추가 관리자 역할들
+  admin_roles_map = [
+    for role_arn in var.cluster_admin_roles : {
+      rolearn  = role_arn
+      username = split("/", role_arn)[length(split("/", role_arn)) - 1]
+      groups   = ["system:masters"]
+    }
+  ]
+  
+  # 모든 사용자 매핑 결합
+  all_user_mappings = concat(
+    local.current_user_map,
+    local.admin_users_map,
+    var.map_users
+  )
+  
+  # 모든 역할 매핑 결합 (노드 그룹 역할 + 추가 역할들)
+  all_role_mappings = concat([
+    {
+      rolearn  = aws_iam_role.node_group.arn
+      username = "system:node:{{EC2PrivateDNSName}}"
+      groups   = ["system:bootstrappers", "system:nodes"]
+    }
+  ], local.admin_roles_map, var.map_roles)
+}
+
+# 개선된 Kubernetes ConfigMap
+resource "kubernetes_config_map_v1" "aws_auth" {
   metadata {
     name      = "aws-auth"
     namespace = "kube-system"
   }
 
   data = {
-    mapRoles = yamlencode([
-      {
-        rolearn  = aws_iam_role.node_group.arn
-        username = "system:node:{{EC2PrivateDNSName}}"
-        groups = [
-          "system:bootstrappers",
-          "system:nodes"
-        ]
-      }
-    ])
-
-    mapUsers = yamlencode([
-      {
-        userarn  = data.aws_caller_identity.current.arn
-        username = "admin"
-        groups   = ["system:masters"]
-      }
-    ])
+    mapRoles = yamlencode(local.all_role_mappings)
+    mapUsers = yamlencode(local.all_user_mappings)
   }
 
-  force = true
-
-  depends_on = [aws_eks_cluster.main]
+  depends_on = [aws_eks_cluster.main, aws_eks_node_group.main]
+  
+  lifecycle {
+    ignore_changes = [metadata[0].annotations]
+  }
 }
