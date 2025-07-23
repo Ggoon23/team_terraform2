@@ -715,4 +715,8 @@ variable "db_user" {
   default     = "dbadmin"
 }
 
-
+variable "use_existing_load_balancer_policy" {
+  description = "기존 Load Balancer Controller 정책 사용 여부"
+  type        = bool
+  default     = false
+}

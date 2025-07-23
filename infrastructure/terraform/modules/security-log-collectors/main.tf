@@ -356,7 +356,7 @@ resource "random_id" "bucket_suffix" {
 
 # Security Hub 설정
 resource "aws_securityhub_account" "main" {
-  count                    = var.enable_security_hub ? 1 : 0
+  count = var.enable_security_hub && !var.security_hub_already_enabled ? 1 : 0
   enable_default_standards = var.security_hub_enable_default_standards
 
   lifecycle {

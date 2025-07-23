@@ -209,7 +209,7 @@ variable "kms_deletion_window" {
 variable "db_family" {
   description = "DB 파라미터 그룹 패밀리"
   type        = string
-  default     = "postgres16.4"
+  default     = "postgres16"
 }
 
 variable "db_parameters" {

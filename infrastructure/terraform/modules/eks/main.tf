@@ -506,7 +506,7 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
 }
 
 resource "aws_iam_policy" "aws_load_balancer_controller" {
-  count = var.enable_load_balancer ? 1 : 0
+  count = var.enable_load_balancer && !var.use_existing_load_balancer_policy ? 1 : 0
   name  = "${var.cluster_name}-AWSLoadBalancerControllerIAMPolicy"
   
   policy = jsonencode({

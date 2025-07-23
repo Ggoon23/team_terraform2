@@ -577,3 +577,9 @@ variable "security_level" {
     error_message = "보안 등급: BASIC, STANDARD, HIGH, MAXIMUM"
   }
 }
+
+variable "security_hub_already_enabled" {
+  description = "Security Hub가 이미 활성화되어 있는지 여부"
+  type        = bool
+  default     = false
+}
