@@ -151,12 +151,12 @@ output "kms_alias_name" {
 # 로깅 정보
 output "cloudwatch_log_group_name" {
   description = "EKS CloudWatch 로그 그룹 이름"
-  value       = aws_cloudwatch_log_group.eks.name
+  value       = length(aws_cloudwatch_log_group.eks) > 0 ? aws_cloudwatch_log_group.eks[0].name : null
 }
 
 output "cloudwatch_log_group_arn" {
   description = "EKS CloudWatch 로그 그룹 ARN"
-  value       = aws_cloudwatch_log_group.eks.arn
+  value       = length(aws_cloudwatch_log_group.eks) > 0 ? aws_cloudwatch_log_group.eks[0].arn : null
 }
 
 output "cluster_enabled_log_types" {

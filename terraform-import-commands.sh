@@ -1,28 +1,16 @@
 #!/bin/bash
-# Terraform import 명령어들
+# 기존 리소스 Import 명령어들
+
+echo "=== 기존 리소스 Import 시작 ==="
+
+# EKS 관련 IAM 역할
+terraform import module.eks.aws_iam_role.cluster "my-eks-cluster-eks-cluster-role"
+terraform import module.eks.aws_iam_role.node_group "my-eks-cluster-eks-node-group-role"
 
 # CloudWatch Log Groups
-terraform import aws_cloudwatch_log_group.application_logs "/aws/application/dev-app-dev"
-terraform import aws_cloudwatch_log_group.security_logs "/aws/security/dev-app-dev"
+terraform import module.eks.aws_cloudwatch_log_group.eks "/aws/eks/my-eks-cluster/cluster"
 
-# KMS Aliases
-terraform import aws_kms_alias.main "alias/dev-app-dev"
+# KMS 키 별칭들 (있다면)
+terraform import module.eks.aws_kms_alias.eks "alias/my-eks-cluster-eks"
 
-# DynamoDB Tables
-terraform import module.dynamodb_security_logs.aws_dynamodb_table.main "security-logs-metadata"
-terraform import module.dynamodb_user_sessions.aws_dynamodb_table.main "user-sessions"
-
-# IAM Roles
-terraform import module.eks.aws_iam_role.cluster "dev-app-dev-eks-eks-cluster-role"
-terraform import module.eks.aws_iam_role.node_group "dev-app-dev-eks-eks-node-group-role"
-
-# RDS 관련
-terraform import module.rds.aws_db_subnet_group.main "dev-app-db-subnet-group"
-terraform import module.rds.aws_db_parameter_group.main "dev-app-db-parameter-group"
-
-# Security Services
-terraform import module.security_log_collectors.aws_guardduty_detector.main[0] "<detector-id>"
-terraform import module.security_log_collectors.aws_securityhub_account.main[0] "902597156026"
-
-# SSM Parameter
-terraform import aws_ssm_parameter.security_policy "/dev-app/dev/security/policy"
+echo "=== Import 완료 ==="

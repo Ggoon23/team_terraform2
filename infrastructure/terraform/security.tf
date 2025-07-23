@@ -67,6 +67,7 @@ resource "aws_security_group_rule" "rds_from_eks" {
   lifecycle {
     create_before_destroy = true
   }
+  depends_on = [module.rds, module.eks]
 }
 
 # 데이터 소스 추가

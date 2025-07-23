@@ -24,17 +24,30 @@ resource "aws_kms_alias" "eks" {
   }
 }
 
-# CloudWatch 로그 그룹 (EKS 제어 플레인 로그용)
+# 로컬 변수로 로그 그룹 이름 정의
+locals {
+  log_group_name = "/aws/eks/${var.cluster_name}/cluster"
+}
+
+# 기존 로그 그룹 확인 시도
+data "aws_cloudwatch_log_group" "existing" {
+  name = local.log_group_name
+}
+
+# 조건부 로그 그룹 생성
 resource "aws_cloudwatch_log_group" "eks" {
-  name              = "/aws/eks/${var.cluster_name}/cluster"
+  count             = try(data.aws_cloudwatch_log_group.existing.name, null) == null ? 1 : 0
+  name              = local.log_group_name
   retention_in_days = var.log_retention_days
 
   tags = merge(var.common_tags, {
     Name = "${var.cluster_name}-eks-cluster-logs"
   })
+  
   lifecycle {
     ignore_changes = [tags_all]
     create_before_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -58,6 +71,7 @@ resource "aws_iam_role" "cluster" {
   tags = var.common_tags
   lifecycle {
     create_before_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -163,6 +177,7 @@ resource "aws_iam_role" "node_group" {
   tags = var.common_tags
   lifecycle {
     create_before_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -306,7 +321,7 @@ resource "aws_eks_node_group" "main" {
   subnet_ids      = var.private_subnet_ids
 
   # 인스턴스 타입
-  instance_types = var.eks_node_instance_types
+  instance_types = var.create_launch_template ? null : var.eks_node_instance_types
   capacity_type  = var.capacity_type
   ami_type       = var.ami_type
 
