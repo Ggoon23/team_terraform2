@@ -161,9 +161,9 @@ variable "stream_view_type" {
 
 # 삭제 보호
 variable "deletion_protection_enabled" {
-  description = "삭제 보호 활성화"
+  description = "삭제 보호 비활성화"
   type        = bool
-  default     = true
+  default     = false
 }
 
 # Auto Scaling 설정

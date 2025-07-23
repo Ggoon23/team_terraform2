@@ -55,20 +55,6 @@ resource "aws_security_group_rule" "eks_node_to_node" {
 # =========================================
 
 # EKS에서 RDS로의 접근 허용
-resource "aws_security_group_rule" "rds_from_eks" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = module.eks.cluster_security_group_id
-  security_group_id        = module.rds.security_group_id
-  description              = "Allow EKS access to RDS"
-
-  lifecycle {
-    create_before_destroy = true
-  }
-  depends_on = [module.rds, module.eks]
-}
 
 # 데이터 소스 추가
 data "aws_security_group" "rds_sg" {
