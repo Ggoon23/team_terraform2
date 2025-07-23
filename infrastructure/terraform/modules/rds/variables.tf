@@ -27,7 +27,7 @@ variable "db_identifier" {
 variable "engine" {
   description = "데이터베이스 엔진"
   type        = string
-  default     = "mysql"
+  default     = "postgres"
   validation {
     condition     = contains(["postgres", "mysql", "mariadb"], var.engine)
     error_message = "지원되는 엔진: postgres, mysql, mariadb"
@@ -37,7 +37,7 @@ variable "engine" {
 variable "engine_version" {
   description = "데이터베이스 엔진 버전"
   type        = string
-  default     = "8.0.36"
+  default     = "16.4"
 }
 
 variable "instance_class" {
@@ -90,7 +90,7 @@ variable "master_password" {
 variable "port" {
   description = "데이터베이스 포트"
   type        = number
-  default     = 3306
+  default     = 5432
 }
 
 # 보안 설정
@@ -209,7 +209,7 @@ variable "kms_deletion_window" {
 variable "db_family" {
   description = "DB 파라미터 그룹 패밀리"
   type        = string
-  default     = "mysql8.0"
+  default     = "postgres16.4"
 }
 
 variable "db_parameters" {
@@ -231,7 +231,7 @@ variable "create_option_group" {
 variable "major_engine_version" {
   description = "주요 엔진 버전 (옵션 그룹용)"
   type        = string
-  default     = "8.0"
+  default     = "16.0"
 }
 
 # 읽기 전용 복제본

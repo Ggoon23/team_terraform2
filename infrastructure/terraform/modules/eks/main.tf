@@ -121,7 +121,7 @@ resource "aws_security_group_rule" "splunk_web_interface" {
 }
 
 # EKS 클러스터
-resource "aws_eks_cluster" "main" {
+data "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
   version  = var.cluster_version
@@ -329,7 +329,6 @@ resource "aws_eks_node_group" "main" {
   instance_types = var.eks_node_instance_types
   capacity_type  = var.capacity_type
   ami_type       = var.ami_type
-  disk_size      = var.disk_size
 
   # 스케일링 설정
   scaling_config {

@@ -194,19 +194,9 @@ resource "aws_flow_log" "vpc" {
 }
 
 # CloudWatch Log Group for VPC Flow Logs
-resource "aws_cloudwatch_log_group" "vpc_flow_log" {
-  count             = var.enable_vpc_flow_logs ? 1 : 0
-  name              = "/aws/vpc/flowlogs/${var.project_name}"
-  retention_in_days = var.flow_log_retention_days
-
-  # 기존 리소스 무시 설정
-  lifecycle {
-    ignore_changes = [name, tags_all]
-  }
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-vpc-flow-logs"
-  })
+data "aws_cloudwatch_log_group" "existing_vpc_flow_log" {
+  count = var.enable_flow_logs ? 1 : 0
+  name  = "/aws/vpc/flowlogs/${var.project_name}"
 }
 
 # IAM Role for VPC Flow Logs

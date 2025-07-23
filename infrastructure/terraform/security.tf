@@ -330,7 +330,10 @@ resource "aws_ssm_parameter" "security_policy" {
   name      = "/${var.project_name}/${var.environment}/security/policy"
   type      = "String"
   value     = jsonencode(local.security_policy_document)
-  overwrite = true  # 추가
+  
+  lifecycle {
+    ignore_changes = [value]
+  }
   
   description = "Security policy document for ${var.project_name} ${var.environment}"
   

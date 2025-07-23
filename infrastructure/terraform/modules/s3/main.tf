@@ -1,6 +1,10 @@
 # infrastructure/terraform/modules/s3/main.tf
 # S3 버킷 구성을 위한 Terraform 모듈
 
+# 데이터 소스
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # KMS 키 (S3 암호화용)
 resource "aws_kms_key" "s3" {
   count                   = var.create_kms_key ? 1 : 0
@@ -357,6 +361,25 @@ resource "aws_s3_bucket_policy" "logs" {
         }
         Action   = "s3:GetBucketAcl"
         Resource = aws_s3_bucket.logs.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
+          }
+        }
+      },
+      {
+        Sid    = "AWSCloudTrailGetBucketLocation"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action   = "s3:GetBucketLocation"
+        Resource = aws_s3_bucket.logs.arn
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
+          }
+        }
       },
       {
         Sid    = "AWSCloudTrailWrite"
@@ -369,6 +392,7 @@ resource "aws_s3_bucket_policy" "logs" {
         Condition = {
           StringEquals = {
             "s3:x-amz-acl" = "bucket-owner-full-control"
+            "AWS:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
           }
         }
       },

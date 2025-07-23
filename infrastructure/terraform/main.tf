@@ -191,7 +191,6 @@ module "rds" {
   source = "./modules/rds"
 
   project_name = var.project_name
-  # environment  = var.environment
 
   # 네트워크 설정
   vpc_id                = module.vpc.vpc_id
@@ -202,7 +201,7 @@ module "rds" {
   ]
   # 데이터베이스 설정
   engine                 = "postgres"
-  engine_version         = "15.4"
+  engine_version         = "16.4"
   instance_class         = var.rds_instance_class
   allocated_storage      = 20
   max_allocated_storage  = 100
@@ -408,6 +407,27 @@ resource "aws_kms_key" "main" {
           "kms:GenerateDataKey"
         ]
         Resource = "*"
+      },
+      # CloudTrail 권한 추가
+      {
+        Sid    = "Allow CloudTrail Encrypt"
+        Effect = "Allow"
+        Principal = {
+          Service = "cloudtrail.amazonaws.com"
+        }
+        Action = [
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey",
+          "kms:Encrypt",
+          "kms:ReEncrypt*",
+          "kms:CreateGrant"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:EncryptionContext:aws:cloudtrail:arn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
+          }
+        }
       }
     ]
   })

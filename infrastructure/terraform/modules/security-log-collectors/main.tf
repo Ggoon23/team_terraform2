@@ -30,7 +30,7 @@ resource "aws_cloudtrail" "main" {
         for_each = var.cloudtrail_s3_data_events
         content {
           type   = "AWS::S3::Object"
-          values = [data_resource.value]
+          values = ["arn:aws:s3:::${var.s3_bucket_name}/*"]
         }
       }
     }
@@ -119,7 +119,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "cloudtrail.amazonaws.com"
         }
         Action   = "s3:GetBucketAcl"
-        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}"
         Condition = {
           StringEquals = {
             "AWS:SourceArn" = "arn:aws:cloudtrail:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:trail/${var.project_name}-cloudtrail"
@@ -133,7 +133,7 @@ resource "aws_s3_bucket_policy" "cloudtrail_bucket" {
           Service = "cloudtrail.amazonaws.com"
         }
         Action   = "s3:PutObject"
-        Resource = "arn:aws:s3:::${var.s3_bucket_name}/*"
+        Resource = "arn:aws:s3:::${var.s3_bucket_name}/${var.cloudtrail_s3_prefix}/*"
         Condition = {
           StringEquals = {
             "s3:x-amz-acl" = "bucket-owner-full-control"
@@ -371,16 +371,26 @@ resource "aws_securityhub_account" "main" {
   # })
 }
 
-# Security Hub 표준 구독
+# 수정 (리전별 표준 ARN 확인 필요)
+data "aws_securityhub_standards" "available" {}
+
 resource "aws_securityhub_standards_subscription" "cis" {
   count         = var.enable_security_hub ? 1 : 0
-  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}::standard/cis-aws-foundations-benchmark/v/1.2.0"
+  standards_arn = data.aws_securityhub_standards.available.standards[
+    index(data.aws_securityhub_standards.available.standards.*.name, "CIS AWS Foundations Benchmark")
+  ].standards_arn
+}
+
+# Security Hub 표준 구독
+resource "aws_securityhub_standards_subscription" "cis" {
+  count         = var.enable_security_hub && var.security_hub_enable_cis ? 1 : 0
+  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:standard/cis-aws-foundations-benchmark/v/1.4.0"
   depends_on    = [aws_securityhub_account.main]
 }
 
 resource "aws_securityhub_standards_subscription" "aws_foundational" {
-  count         = var.enable_security_hub ? 1 : 0
-  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}::standard/aws-foundational-security-best-practices/v/1.0.0"
+  count         = var.enable_security_hub && var.security_hub_enable_aws_foundational ? 1 : 0
+  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:standard/aws-foundational-security-best-practices/v/1.0.0"
   depends_on    = [aws_securityhub_account.main]
 }
 
@@ -472,7 +482,7 @@ resource "aws_iam_role_policy" "config_s3" {
 resource "aws_inspector2_enabler" "main" {
   count          = var.enable_inspector ? 1 : 0
   account_ids    = [data.aws_caller_identity.current.account_id]
-  resource_types = var.inspector_resource_types
+  resource_types = ["ECR", "EC2"]
 }
 
 # VPC Flow Logs 설정
