@@ -121,7 +121,7 @@ resource "aws_security_group_rule" "splunk_web_interface" {
 }
 
 # EKS 클러스터
-data "aws_eks_cluster" "main" {
+resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.cluster.arn
   version  = var.cluster_version

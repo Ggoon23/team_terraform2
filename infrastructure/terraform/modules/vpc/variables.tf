@@ -125,3 +125,9 @@ variable "enable_dns_support" {
   type        = bool
   default     = true
 }
+
+variable "enable_flow_logs" {
+  description = "VPC Flow Logs 활성화"
+  type        = bool
+  default     = false
+}

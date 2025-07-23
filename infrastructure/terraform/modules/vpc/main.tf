@@ -191,11 +191,27 @@ resource "aws_flow_log" "vpc" {
   log_destination = aws_cloudwatch_log_group.vpc_flow_log[0].arn
   traffic_type    = "ALL"
   vpc_id          = aws_vpc.main.id
+  
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-vpc-flow-logs"
+    Type = "Network Security"
+  })
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow_log" {
+  count             = var.enable_vpc_flow_logs ? 1 : 0
+  name              = "/aws/vpc/flowlogs/${var.project_name}"
+  retention_in_days = var.flow_log_retention_days
+
+  tags = merge(var.common_tags, {
+    Name = "${var.project_name}-vpc-flow-logs"
+    Type = "Network Security"
+  })
 }
 
 # CloudWatch Log Group for VPC Flow Logs
-data "aws_cloudwatch_log_group" "existing_vpc_flow_log" {
-  count = var.enable_flow_logs ? 1 : 0
+resource "aws_cloudwatch_log_group" "existing_vpc_flow_log" {
+  count = var.enable_vpc_flow_logs ? 1 : 0
   name  = "/aws/vpc/flowlogs/${var.project_name}"
 }
 

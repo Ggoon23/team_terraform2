@@ -372,13 +372,10 @@ resource "aws_securityhub_account" "main" {
 }
 
 # Security Hub 표준 구독
-data "aws_securityhub_standards" "available" {}
-
 resource "aws_securityhub_standards_subscription" "cis" {
-  count         = var.enable_security_hub ? 1 : 0
-  standards_arn = data.aws_securityhub_standards.available.standards[
-    index(data.aws_securityhub_standards.available.standards.*.name, "CIS AWS Foundations Benchmark")
-  ].standards_arn
+  count         = var.enable_security_hub && var.security_hub_enable_cis ? 1 : 0
+  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}::standard/cis-aws-foundations-benchmark/v/1.2.0"
+  depends_on    = [aws_securityhub_account.main]
 }
 
 resource "aws_securityhub_standards_subscription" "aws_foundational" {
@@ -476,6 +473,11 @@ resource "aws_inspector2_enabler" "main" {
   count          = var.enable_inspector ? 1 : 0
   account_ids    = [data.aws_caller_identity.current.account_id]
   resource_types = ["ECR", "EC2"]
+
+  lifecycle {
+    ignore_changes = [resource_types]
+  }
+  
 }
 
 # VPC Flow Logs 설정
