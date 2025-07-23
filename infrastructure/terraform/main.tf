@@ -115,7 +115,7 @@ module "eks" {
 
   # 클러스터 설정
   cluster_name    = local.cluster_name
-  cluster_version = "1.33"
+  cluster_version = "1.32"
 
   # 네트워크 설정
   vpc_id             = module.vpc.vpc_id
