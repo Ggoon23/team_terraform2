@@ -185,18 +185,18 @@ resource "aws_route_table_association" "database" {
 }
 
 # VPC Flow Logs (보안 모니터링용)
-resource "aws_flow_log" "vpc" {
-  count           = var.enable_vpc_flow_logs ? 1 : 0
-  iam_role_arn    = aws_iam_role.flow_log[0].arn
-  log_destination = aws_cloudwatch_log_group.vpc_flow_log[0].arn
-  traffic_type    = "ALL"
-  vpc_id          = aws_vpc.main.id
-  
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-vpc-flow-logs"
-    Type = "Network Security"
-  })
-}
+#resource "aws_flow_log" "vpc" {
+#  count           = var.enable_vpc_flow_logs ? 1 : 0
+#  iam_role_arn    = aws_iam_role.flow_log[0].arn
+# log_destination = aws_cloudwatch_log_group.vpc_flow_log[0].arn
+#  traffic_type    = "ALL"
+#  vpc_id          = aws_vpc.main.id
+#  
+#  tags = merge(var.common_tags, {
+#    Name = "${var.project_name}-vpc-flow-logs"
+#    Type = "Network Security"
+#  })
+#}
 
 resource "aws_cloudwatch_log_group" "vpc_flow_log" {
   count             = var.enable_vpc_flow_logs ? 1 : 0
@@ -207,12 +207,6 @@ resource "aws_cloudwatch_log_group" "vpc_flow_log" {
     Name = "${var.project_name}-vpc-flow-logs"
     Type = "Network Security"
   })
-}
-
-# CloudWatch Log Group for VPC Flow Logs
-resource "aws_cloudwatch_log_group" "existing_vpc_flow_log" {
-  count = var.enable_vpc_flow_logs ? 1 : 0
-  name  = "/aws/vpc/flowlogs/${var.project_name}"
 }
 
 # IAM Role for VPC Flow Logs

@@ -88,10 +88,10 @@ output "database_route_table_id" {
 }
 
 # 보안 모니터링 관련
-output "vpc_flow_log_id" {
-  description = "VPC Flow Log ID"
-  value       = var.enable_vpc_flow_logs ? aws_flow_log.vpc[0].id : null
-}
+#output "vpc_flow_log_id" {
+#  description = "VPC Flow Log ID"
+#  value       = var.enable_vpc_flow_logs ? aws_flow_log.vpc[0].id : null
+#}
 
 output "vpc_flow_log_group_name" {
   description = "VPC Flow Log CloudWatch 로그 그룹 이름"
