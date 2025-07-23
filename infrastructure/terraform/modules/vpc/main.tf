@@ -165,14 +165,14 @@ resource "aws_route_table" "database" {
 
 # 퍼블릭 서브넷과 라우팅 테이블 연결
 resource "aws_route_table_association" "public" {
-  count          = length(var.database_subnet_cidrs)
+  count          = length(var.public_subnet_cidrs)
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
 # 프라이빗 서브넷과 라우팅 테이블 연결
 resource "aws_route_table_association" "private" {
-  count          = length(var.database_subnet_cidrs)
+  count          = length(var.private_subnet_cidrs)
   subnet_id      = aws_subnet.private[count.index].id
   route_table_id = var.enable_nat_gateway ? aws_route_table.private[count.index].id : aws_route_table.private[0].id
 }

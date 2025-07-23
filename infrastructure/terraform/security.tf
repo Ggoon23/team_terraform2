@@ -65,6 +65,11 @@ resource "aws_security_group_rule" "rds_from_eks" {
   description              = "Allow EKS access to RDS"
 }
 
+# 데이터 소스 추가
+data "aws_security_group" "rds_sg" {
+  id = module.rds.security_group_id
+} 
+
 # Bastion에서 RDS로의 접근 허용 (관리 목적)
 resource "aws_security_group_rule" "rds_from_bastion" {
   count                    = var.enable_bastion_host ? 1 : 0
