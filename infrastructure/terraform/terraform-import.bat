@@ -37,17 +37,10 @@ terraform import module.security_log_collectors.aws_iam_role.cloudtrail_cloudwat
 terraform import module.security_log_collectors.aws_iam_role.splunk_forwarder "dev-app-splunk-forwarder-role"
 terraform import module.security_log_collectors.aws_securityhub_account.main[0] "902597156026"
 terraform import module.security_log_collectors.aws_iam_role.config[0] "dev-app-config-role"
-terraform import module.security_log_collectors.aws_iam_role.flow_log[0] "dev-app-vpc-flow-log-role"
 
 rem VPC 관련
 terraform import module.vpc.aws_cloudwatch_log_group.vpc_flow_log[0] "/aws/vpc/flowlogs/dev-app"
 terraform import module.vpc.aws_iam_role.flow_log[0] "dev-app-vpc-flow-log-role"
-
-rem ALB 관련
-terraform import aws_lb.main[0] "arn:aws:elasticloadbalancing:ap-northeast-2:902597156026:loadbalancer/app/dev-app-dev-alb/xxxxxxxxxx"
-terraform import aws_lb_target_group.app[0] "arn:aws:elasticloadbalancing:ap-northeast-2:902597156026:targetgroup/dev-app-dev-tg/xxxxxxxxxx"
-
-
 
 echo === Import 완료 ===
 pause

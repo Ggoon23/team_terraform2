@@ -29,21 +29,26 @@ resource "aws_db_parameter_group" "main" {
     }
   }
 
-  # ISMS-P 컴플라이언스: 로그 설정
-  parameter {
-  name  = "slow_query_log"
+# PostgreSQL 로깅 파라미터
+parameter {
+  name  = "log_statement"
+  value = "all"
+}
+
+parameter {
+  name  = "log_min_duration_statement"
+  value = "1000"  # 1초 이상 쿼리 로깅
+}
+
+parameter {
+  name  = "log_connections"
   value = "1"
-  } 
+}
 
-  parameter {
-    name  = "long_query_time"
-    value = "1"
-  }
-
-  parameter {
-    name  = "general_log"
-    value = "1"
-  }
+parameter {
+  name  = "log_disconnections"
+  value = "1"
+}
 
   tags = var.common_tags
 }
