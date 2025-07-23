@@ -371,7 +371,7 @@ resource "aws_securityhub_account" "main" {
   # })
 }
 
-# 수정 (리전별 표준 ARN 확인 필요)
+# Security Hub 표준 구독
 data "aws_securityhub_standards" "available" {}
 
 resource "aws_securityhub_standards_subscription" "cis" {
@@ -379,13 +379,6 @@ resource "aws_securityhub_standards_subscription" "cis" {
   standards_arn = data.aws_securityhub_standards.available.standards[
     index(data.aws_securityhub_standards.available.standards.*.name, "CIS AWS Foundations Benchmark")
   ].standards_arn
-}
-
-# Security Hub 표준 구독
-resource "aws_securityhub_standards_subscription" "cis" {
-  count         = var.enable_security_hub && var.security_hub_enable_cis ? 1 : 0
-  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:standard/cis-aws-foundations-benchmark/v/1.4.0"
-  depends_on    = [aws_securityhub_account.main]
 }
 
 resource "aws_securityhub_standards_subscription" "aws_foundational" {

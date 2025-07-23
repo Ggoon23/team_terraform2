@@ -149,9 +149,6 @@ data "aws_eks_cluster" "main" {
     Name = var.cluster_name
     Type = "EKS Cluster"
   })
-  lifecycle {
-    ignore_changes = [tags_all]
-  }
   depends_on = [
     aws_iam_role_policy_attachment.cluster_AmazonEKSClusterPolicy,
     aws_iam_role_policy_attachment.cluster_AmazonEKSVPCResourceController,

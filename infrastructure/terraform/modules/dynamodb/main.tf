@@ -318,14 +318,10 @@ resource "aws_iam_role_policy" "dynamodb_access" {
 }
 
 # 데이터 분류 태그 설정
-resource "aws_dynamodb_table" "main" {
+resource "aws_dynamodb_tag" "data_classification" {
   resource_arn = aws_dynamodb_table.main.arn
   key          = "DataClassification"
   value        = var.data_classification
-  tags = merge(var.common_tags, {
-    DataClassification = var.data_classification
-    Compliance        = var.compliance_level
-  })
 }
 
 resource "aws_dynamodb_tag" "compliance" {
