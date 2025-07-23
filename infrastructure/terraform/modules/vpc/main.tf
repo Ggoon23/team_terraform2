@@ -62,6 +62,8 @@ resource "aws_subnet" "private" {
     Name = "${var.project_name}-private-subnet-${count.index + 1}"
     Type = "Private"
     Tier = "Application"
+    "kubernetes.io/role/internal-elb" = "1"
+    "kubernetes.io/cluster/${var.project_name}-eks" = "shared"
   })
   lifecycle {
     ignore_changes = [tags_all]

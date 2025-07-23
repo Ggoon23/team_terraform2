@@ -206,9 +206,6 @@ output "kubeconfig" {
   }
 }
 
-# 데이터 소스
-data "aws_region" "current" {}
-
 # 클러스터 접근용 명령어
 output "cluster_access_commands" {
   description = "클러스터 접근을 위한 AWS CLI 명령어"

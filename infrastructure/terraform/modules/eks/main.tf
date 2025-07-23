@@ -1,10 +1,78 @@
 # infrastructure/terraform/modules/eks/main.tf
 # EKS 클러스터 구성을 위한 Terraform 모듈
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 # KMS 키 (EKS 시크릿 암호화용)
 resource "aws_kms_key" "eks" {
   description             = "EKS Secret Encryption Key - ${var.cluster_name}"
   deletion_window_in_days = var.kms_deletion_window
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow EKS to use the key"
+        Effect = "Allow"
+        Principal = {
+          Service = "eks.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow EC2 to use the key for EBS"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:Encrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:CreateGrant",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "kms:ViaService" = "ec2.${data.aws_region.current.name}.amazonaws.com"
+          }
+        }
+      },
+      {
+        Sid    = "Allow autoscaling to use the key"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:Encrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:CreateGrant",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 
   tags = merge(var.common_tags, {
     Name = "${var.cluster_name}-eks-kms-key"
@@ -162,7 +230,7 @@ resource "aws_iam_role" "node_group" {
         Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
-          Service = "ec2.amazonaws.com"
+          Service = ["ec2.amazonaws.com", "eks.amazonaws.com"]
         }
       }
     ]
@@ -273,7 +341,7 @@ resource "aws_launch_template" "node_group" {
       volume_type = var.ebs_volume_type
       volume_size = var.ebs_volume_size
       encrypted   = true
-      kms_key_id  = aws_kms_key.eks.arn
+      # kms_key_id  = aws_kms_key.eks.arn
     }
   }
 
@@ -670,9 +738,6 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_attach" 
   role       = aws_iam_role.aws_load_balancer_controller[0].name
   policy_arn = aws_iam_policy.aws_load_balancer_controller[0].arn
 }
-
-# 데이터 소스 추가
-data "aws_caller_identity" "current" {}
 
 # 현재 사용자를 관리자로 추가하기 위한 로컬 변수
 locals {
