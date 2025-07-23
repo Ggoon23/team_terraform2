@@ -18,6 +18,10 @@ resource "aws_kms_key" "eks" {
 resource "aws_kms_alias" "eks" {
   name          = "alias/${var.cluster_name}-eks"
   target_key_id = aws_kms_key.eks.key_id
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # CloudWatch 로그 그룹 (EKS 제어 플레인 로그용)
@@ -30,6 +34,7 @@ resource "aws_cloudwatch_log_group" "eks" {
   })
   lifecycle {
     ignore_changes = [tags_all]
+    create_before_destroy = true
   }
 }
 
@@ -51,6 +56,9 @@ resource "aws_iam_role" "cluster" {
   })
 
   tags = var.common_tags
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # EKS 클러스터 정책 연결
@@ -153,6 +161,9 @@ resource "aws_iam_role" "node_group" {
   })
 
   tags = var.common_tags
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # EKS 노드 그룹 정책 연결

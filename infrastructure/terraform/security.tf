@@ -63,6 +63,10 @@ resource "aws_security_group_rule" "rds_from_eks" {
   source_security_group_id = module.eks.cluster_security_group_id
   security_group_id        = module.rds.security_group_id
   description              = "Allow EKS access to RDS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # 데이터 소스 추가

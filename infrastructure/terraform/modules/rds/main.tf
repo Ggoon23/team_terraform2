@@ -12,6 +12,7 @@ resource "aws_db_subnet_group" "main" {
   })
   lifecycle {
     ignore_changes = [tags_all]
+    create_before_destroy = true
   }
 }
 
