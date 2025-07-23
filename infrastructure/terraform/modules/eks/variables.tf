@@ -238,13 +238,6 @@ variable "use_existing_load_balancer_policy" {
   default     = false
 }
 
-# 태그
-variable "common_tags" {
-  description = "리소스 태그"
-  type        = map(string)
-  default     = {}
-}
-
 # AWS Auth 설정
 variable "map_roles" {
   description = "추가로 매핑할 IAM 역할 목록"
@@ -276,4 +269,11 @@ variable "cluster_admin_roles" {
   description = "클러스터 관리자 권한을 가질 IAM 역할 ARN 목록"
   type = list(string)
   default = []
+}
+
+# 태그
+variable "common_tags" {
+  description = "리소스 태그"
+  type        = map(string)
+  default     = {}
 }
