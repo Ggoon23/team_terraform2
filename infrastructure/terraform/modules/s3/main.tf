@@ -22,7 +22,7 @@ resource "aws_kms_key" "s3" {
 
 resource "aws_kms_alias" "s3" {
   count         = var.create_kms_key ? 1 : 0
-  name          = "alias/${var.project_name}-s3"
+  name          = "alias/${var.project_name}-s3-test"
   target_key_id = aws_kms_key.s3[0].key_id
 }
 

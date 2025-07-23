@@ -13,6 +13,7 @@ resource "aws_db_subnet_group" "main" {
   lifecycle {
     ignore_changes = [tags_all]
     create_before_destroy = true
+    prevent_destroy = false
   }
 }
 
@@ -30,28 +31,33 @@ resource "aws_db_parameter_group" "main" {
     }
   }
 
-# PostgreSQL 로깅 파라미터
-parameter {
-  name  = "log_statement"
-  value = "all"
-}
+  # PostgreSQL 로깅 파라미터
+  parameter {
+    name  = "log_statement"
+    value = "all"
+  }
 
-parameter {
-  name  = "log_min_duration_statement"
-  value = "1000"  # 1초 이상 쿼리 로깅
-}
+  parameter {
+    name  = "log_min_duration_statement"
+    value = "1000"  # 1초 이상 쿼리 로깅
+  }
 
-parameter {
-  name  = "log_connections"
-  value = "1"
-}
+  parameter {
+    name  = "log_connections"
+    value = "1"
+  }
 
-parameter {
-  name  = "log_disconnections"
-  value = "1"
-}
+  parameter {
+    name  = "log_disconnections"
+    value = "1"
+  }
 
   tags = var.common_tags
+
+  lifecycle {
+    create_before_destroy = true
+    prevent_destroy = false
+  }
 }
 
 # RDS 옵션 그룹
@@ -82,7 +88,7 @@ resource "aws_kms_key" "rds" {
 
 resource "aws_kms_alias" "rds" {
   count         = var.create_kms_key ? 1 : 0
-  name          = "alias/${var.project_name}-rds"
+  name          = "alias/${var.project_name}-rds-test"
   target_key_id = aws_kms_key.rds[0].key_id
 }
 

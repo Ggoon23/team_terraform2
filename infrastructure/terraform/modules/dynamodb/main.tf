@@ -18,7 +18,7 @@ resource "aws_kms_key" "dynamodb" {
 
 resource "aws_kms_alias" "dynamodb" {
   count         = var.create_kms_key ? 1 : 0
-  name          = "alias/${var.project_name}-${var.table_name}-dynamodb"
+  name          = "alias/${var.project_name}-${var.table_name}-dynamodb-test"
   target_key_id = aws_kms_key.dynamodb[0].key_id
 }
 
@@ -315,17 +315,4 @@ resource "aws_iam_role_policy" "dynamodb_access" {
       }
     ]
   })
-}
-
-# 데이터 분류 태그 설정
-resource "aws_dynamodb_tag" "data_classification" {
-  resource_arn = aws_dynamodb_table.main.arn
-  key          = "DataClassification"
-  value        = var.data_classification
-}
-
-resource "aws_dynamodb_tag" "compliance" {
-  resource_arn = aws_dynamodb_table.main.arn
-  key          = "Compliance"
-  value        = "ISMS-P"
 }

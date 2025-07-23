@@ -16,7 +16,7 @@ resource "aws_kms_key" "eks" {
 }
 
 resource "aws_kms_alias" "eks" {
-  name          = "alias/${var.cluster_name}-eks"
+  name          = "alias/${var.cluster_name}-eks-test"
   target_key_id = aws_kms_key.eks.key_id
 
   lifecycle {
@@ -24,19 +24,13 @@ resource "aws_kms_alias" "eks" {
   }
 }
 
-# 로컬 변수로 로그 그룹 이름 정의
+# 기존 데이터 소스를 try 함수로 감싸서 에러 방지
 locals {
   log_group_name = "/aws/eks/${var.cluster_name}/cluster"
 }
 
-# 기존 로그 그룹 확인 시도
-data "aws_cloudwatch_log_group" "existing" {
-  name = local.log_group_name
-}
-
-# 조건부 로그 그룹 생성
+# CloudWatch 로그 그룹 생성 조건 수정
 resource "aws_cloudwatch_log_group" "eks" {
-  count             = try(data.aws_cloudwatch_log_group.existing.name, null) == null ? 1 : 0
   name              = local.log_group_name
   retention_in_days = var.log_retention_days
 
@@ -269,14 +263,7 @@ resource "aws_launch_template" "node_group" {
   key_name      = var.ec2_key_pair_name
 
   vpc_security_group_ids = [aws_security_group.node_group.id]
-
-  # 사용자 데이터 (보안 강화)
-  user_data = base64encode(templatefile("${path.module}/user_data.sh", {
-    cluster_name = var.cluster_name
-    cluster_endpoint = aws_eks_cluster.main.endpoint
-    cluster_ca = aws_eks_cluster.main.certificate_authority[0].data
-  }))
-
+  
   # EBS 최적화 및 암호화
   ebs_optimized = true
 
@@ -682,4 +669,40 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller_attach" 
   count      = var.enable_load_balancer ? 1 : 0
   role       = aws_iam_role.aws_load_balancer_controller[0].name
   policy_arn = aws_iam_policy.aws_load_balancer_controller[0].arn
+}
+
+# 데이터 소스 추가
+data "aws_caller_identity" "current" {}
+
+# Kubernetes ConfigMap을 통한 권한 설정
+resource "kubernetes_config_map_v1_data" "aws_auth" {
+  metadata {
+    name      = "aws-auth"
+    namespace = "kube-system"
+  }
+
+  data = {
+    mapRoles = yamlencode([
+      {
+        rolearn  = aws_iam_role.node_group.arn
+        username = "system:node:{{EC2PrivateDNSName}}"
+        groups = [
+          "system:bootstrappers",
+          "system:nodes"
+        ]
+      }
+    ])
+
+    mapUsers = yamlencode([
+      {
+        userarn  = data.aws_caller_identity.current.arn
+        username = "admin"
+        groups   = ["system:masters"]
+      }
+    ])
+  }
+
+  force = true
+
+  depends_on = [aws_eks_cluster.main]
 }
