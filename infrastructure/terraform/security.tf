@@ -102,6 +102,18 @@ resource "aws_security_group_rule" "eks_from_alb" {
   description              = "Allow ALB access to EKS applications"
 }
 
+# ALB에서 EKS NodePort 범위로의 접근 허용
+resource "aws_security_group_rule" "alb_to_eks_nodeport" {
+  count                    = var.enable_load_balancer ? 1 : 0
+  type                     = "ingress"
+  from_port                = var.nodeport_range_start
+  to_port                  = var.nodeport_range_end
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.alb[0].id
+  security_group_id        = module.eks.node_group_security_group_id
+  description              = "ALB to EKS NodePort range access"
+}
+
 # =========================================
 # Bastion Host 보안 그룹 (조건부 생성)
 # =========================================
