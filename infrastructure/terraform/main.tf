@@ -623,3 +623,15 @@ locals {
     CostCenter  = var.cost_center
   })
 }
+
+
+module "ecr" {
+  source = "./modules/ecr"
+
+  name = "myapp"
+  tags = {
+    Environment = "dev"
+    Project     = "myproject"
+  }
+}
+
