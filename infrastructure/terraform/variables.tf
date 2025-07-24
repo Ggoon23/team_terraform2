@@ -424,6 +424,18 @@ variable "ssl_certificate_arn" {
   default     = ""
 }
 
+variable "nodeport_range_start" {
+  description = "NodePort 범위 시작"
+  type        = number
+  default     = 30000
+}
+
+variable "nodeport_range_end" {
+  description = "NodePort 범위 끝"
+  type        = number
+  default     = 32767
+}
+
 # =========================================
 # 애플리케이션 설정
 # =========================================

@@ -569,7 +569,7 @@ resource "aws_lb_target_group" "eks_nodes" {
   port        = var.application_port
   protocol    = "HTTP"
   vpc_id      = module.vpc.vpc_id
-  target_type = "instance"
+  target_type = "ip"
 
   health_check {
     enabled             = true
