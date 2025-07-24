@@ -11,3 +11,5 @@ aws_region         = "ap-northeast-2"
 environment        = "dev"
 project_name       = "dev-app"
 #create_launch_template = false
+enable_load_balancer = true
+application_port     = 8080

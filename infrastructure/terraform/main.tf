@@ -139,6 +139,8 @@ module "eks" {
 
   # IRSA 설정
   enable_irsa = true
+
+  enable_load_balancer = var.enable_load_balancer
   
   # 애드온 설정
   enable_vpc_cni_addon    = true
@@ -503,7 +505,7 @@ resource "aws_iam_role_policy" "eks_app_policy" {
 }
 
 # =========================================
-# Application Load Balancer (선택사항)
+# Application Load Balancer
 # =========================================
 resource "aws_lb" "main" {
   count              = var.enable_load_balancer ? 1 : 0
@@ -556,6 +558,53 @@ resource "aws_security_group" "alb" {
 
   tags = merge(local.common_tags, {
     Name      = "${var.project_name}-alb-sg"
+    Component = "LoadBalancer"
+  })
+}
+
+# ALB Target Group
+resource "aws_lb_target_group" "eks_nodes" {
+  count       = var.enable_load_balancer ? 1 : 0
+  name        = "${var.project_name}-eks-nodes-tg"
+  port        = var.application_port
+  protocol    = "HTTP"
+  vpc_id      = module.vpc.vpc_id
+  target_type = "instance"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    timeout             = 5
+    interval            = 30
+    path                = "/"
+    matcher             = "200"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+  }
+
+  tags = merge(local.common_tags, {
+    Name                                        = "${var.project_name}-eks-nodes-tg"
+    Component                                   = "LoadBalancer"
+    "kubernetes.io/service-name"               = "default/example-service"
+    "kubernetes.io/cluster/${local.cluster_name}" = "owned"
+  })
+}
+
+# ALB Listener
+resource "aws_lb_listener" "eks_nodes" {
+  count             = var.enable_load_balancer ? 1 : 0
+  load_balancer_arn = aws_lb.main[0].arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.eks_nodes[0].arn
+  }
+
+  tags = merge(local.common_tags, {
+    Name      = "${var.project_name}-alb-listener"
     Component = "LoadBalancer"
   })
 }
