@@ -801,3 +801,6 @@ resource "kubernetes_config_map_v1" "aws_auth" {
     ignore_changes = [metadata[0].annotations]
   }
 }
+
+# EKS 클러스터가 생성될 때 AWS가 자동으로 aws-auth ConfigMap을 생성하는데, Terraform 코드에서도 이를 생성하려고 해서 충돌이 발생
+# terraform import module.eks.kubernetes_config_map_v1.aws_auth kube-system/aws-auth
